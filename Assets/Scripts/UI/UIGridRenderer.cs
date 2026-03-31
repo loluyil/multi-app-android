@@ -46,6 +46,10 @@ public class UIGridRenderer : Graphic
     public float[] CellHeight => _cellHeight;
     public float[][] AllRows => _allRows;
     public float[][] AllColumns => _allColumns;
+    private void OnRectTransformDimensionsChange()
+{
+    SetVerticesDirty();
+}
     protected override void OnPopulateMesh(VertexHelper vh)
     {
         vh.Clear();
