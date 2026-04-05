@@ -368,8 +368,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 533}
-  m_SizeDelta: {x: 1259.5925, y: 230}
+  m_AnchoredPosition: {x: 0.4155, y: 533}
+  m_SizeDelta: {x: 177.2407, y: 230}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &741850335
 MonoBehaviour:
@@ -430,8 +430,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -1200, y: 0}
-  m_SizeDelta: {x: 153.8767, y: 804.52}
+  m_AnchoredPosition: {x: -1200, y: -1.9609}
+  m_SizeDelta: {x: 153.8767, y: 154.6307}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1006646219
 MonoBehaviour:
@@ -514,6 +514,9 @@ MonoBehaviour:
   startingSeat: 0
   botDelayMin: 0.5
   botDelayMax: 1
+  botTweenDuration: 0.35
+  botTweenEase: 9
+  botCardSpacing: 42
 --- !u!1 &1483447658
 GameObject:
   m_ObjectHideFlags: 0
@@ -717,6 +720,8 @@ MonoBehaviour:
   shiftDuration: 0.18
   returnDuration: 0.2
   playAreaDuration: 0.22
+  dealTweenDuration: 0.2
+  dealStartScale: 0.8
   dragScale: 1.15
   shadowOffset: {x: 0, y: -30}
   multiDragSeparation: 130
@@ -757,8 +762,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 1200, y: 0.0000047684}
-  m_SizeDelta: {x: 153.8767, y: 804.52}
+  m_AnchoredPosition: {x: 1200, y: -1.9628}
+  m_SizeDelta: {x: 153.8767, y: 154.63}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1814805302
 MonoBehaviour:
@@ -946,6 +951,8 @@ MonoBehaviour:
     sprite: {fileID: 21300000, guid: 260f336ef36742f45a81dda4717302cb, type: 3}
   - key: spades-9
     sprite: {fileID: 21300000, guid: f73fa646277c54a46994c333fa20561d, type: 3}
+  dealInterval: 0.03
+  dealTweenDuration: 0.15
   dealOnStart: 1
   playerHand: []
   opponentHandA: []

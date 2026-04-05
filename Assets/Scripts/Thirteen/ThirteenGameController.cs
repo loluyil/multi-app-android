@@ -46,6 +46,10 @@ public class ThirteenGameController : MonoBehaviour
     private IEnumerator Start()
     {
         yield return null;
+
+        if (deckDealer != null && deckDealer.IsDealing)
+            yield return new WaitUntil(() => !deckDealer.IsDealing);
+
         InitializeGame();
     }
 
@@ -97,12 +101,30 @@ public class ThirteenGameController : MonoBehaviour
         localHandHolder.SetController(this);
 
         if (!deckDealer.HasDealtHands)
+        {
+            deckDealer.OnDealComplete += OnDealFinished;
             deckDealer.ShuffleAndDeal();
+            return;
+        }
 
+        FinishInitialization();
+    }
+
+    private void OnDealFinished()
+    {
+        deckDealer.OnDealComplete -= OnDealFinished;
+        FinishInitialization();
+    }
+
+    private void FinishInitialization()
+    {
         for (int seat = 0; seat < seatHands.Length; seat++)
             seatHands[seat] = deckDealer.GetHandForSeat(seat).ToList();
 
-        localHandHolder.SetHand(seatHands[localPlayerSeat], deckDealer.SpriteLookup);
+        if (localHandHolder.HasDealPreview)
+            localHandHolder.CompleteDealPreview(seatHands[localPlayerSeat], deckDealer.SpriteLookup);
+        else
+            localHandHolder.SetHand(seatHands[localPlayerSeat], deckDealer.SpriteLookup);
         localHandHolder.ClearPlayArea();
         localHandHolder.ClearSelection();
 

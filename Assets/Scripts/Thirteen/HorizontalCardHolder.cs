@@ -19,6 +19,8 @@ public class HorizontalCardHolder : MonoBehaviour
     [SerializeField] private float shiftDuration = 0.18f;
     [SerializeField] private float returnDuration = 0.2f;
     [SerializeField] private float playAreaDuration = 0.22f;
+    [SerializeField] private float dealTweenDuration = 0.2f;
+    [SerializeField] private float dealStartScale = 0.8f;
     [SerializeField] private float dragScale = 1.08f;
     [SerializeField] private Vector2 shadowOffset = new Vector2(0f, -18f);
     [SerializeField] private float multiDragSeparation = 42f;
@@ -30,6 +32,7 @@ public class HorizontalCardHolder : MonoBehaviour
     private readonly List<Card> cards = new List<Card>();
     private readonly List<RectTransform> slots = new List<RectTransform>();
     private readonly List<Card> activeDragGroup = new List<Card>();
+    private readonly List<GameObject> dealPreviewCards = new List<GameObject>();
 
     private ThirteenGameController controller;
     private RectTransform holderRect;
@@ -40,6 +43,7 @@ public class HorizontalCardHolder : MonoBehaviour
     private int handStartSlotIndex;
     private bool initialized;
     private bool turnActive;
+    private bool hasDealPreview;
 
     public RectTransform PlayArea => playArea;
 
@@ -106,6 +110,110 @@ public class HorizontalCardHolder : MonoBehaviour
 
         handStartSlotIndex = GetCenteredStartIndex(count);
         ArrangeCards(false);
+    }
+
+    public bool HasDealPreview => hasDealPreview;
+
+    public void PrepareDealPreview(int cardCount)
+    {
+        InitializeHand(forceRebuild: cards.Count != slotCount);
+        CacheSlotsAndCards();
+        ClearDealPreview();
+
+        int clampedCount = Mathf.Clamp(cardCount, 0, cards.Count);
+        handStartSlotIndex = GetCenteredStartIndex(clampedCount);
+        hasDealPreview = clampedCount > 0;
+
+        for (int i = 0; i < cards.Count; i++)
+        {
+            Card card = cards[i];
+            if (card == null)
+                continue;
+
+            card.KillTweens();
+            card.SetSelected(false, false);
+            card.SetReturning(false);
+            card.SnapToLocal(Vector2.zero);
+            card.SnapScale(Vector3.one);
+            card.SetInteractionEnabled(false);
+            card.gameObject.SetActive(false);
+        }
+    }
+
+    public void AnimateDealPreviewCard(Card.CardData data, IReadOnlyDictionary<string, Sprite> spriteLookup, Vector3 startWorldPosition, int dealtIndex)
+    {
+        if (spriteLookup == null || cardPrefab == null)
+            return;
+
+        if (dealtIndex < 0 || dealtIndex >= slotCount)
+            return;
+
+        int slotIndex = handStartSlotIndex + dealtIndex;
+        if (slotIndex < 0 || slotIndex >= slots.Count)
+            return;
+
+        RectTransform targetSlot = slots[slotIndex];
+        if (targetSlot == null)
+            return;
+
+        Transform tweenParent = dragLayer != null ? dragLayer : holderRect;
+        GameObject previewObject = Instantiate(cardPrefab, tweenParent);
+        previewObject.name = $"DealPreview_{dealtIndex}_{data.SpriteKey}";
+        dealPreviewCards.Add(previewObject);
+
+        Card card = previewObject.GetComponent<Card>();
+        if (card == null)
+        {
+            Destroy(previewObject);
+            return;
+        }
+
+        spriteLookup.TryGetValue(data.SpriteKey, out Sprite sprite);
+        card.SetCardData(data, sprite);
+        card.SetSelected(false, false);
+        card.SetReturning(true);
+        card.SetInteractionEnabled(false);
+        card.KillTweens();
+
+        card.RectTransform.position = startWorldPosition;
+        card.RectTransform.localRotation = Quaternion.identity;
+        card.RectTransform.localScale = Vector3.one * dealStartScale;
+
+        Vector3 targetWorldPosition = card.GetTargetWorldPosition(targetSlot);
+        card.RectTransform.DOMove(targetWorldPosition, dealTweenDuration)
+            .SetEase(shiftEase)
+            .OnComplete(() =>
+            {
+                if (card == null || targetSlot == null)
+                    return;
+
+                card.transform.SetParent(targetSlot, false);
+                card.SnapToLocal(Vector2.zero);
+                card.SnapScale(Vector3.one);
+                card.SetReturning(false);
+            });
+
+        card.TweenScale(Vector3.one, dealTweenDuration, shiftEase);
+    }
+
+    public void CompleteDealPreview(IReadOnlyList<Card.CardData> hand, IReadOnlyDictionary<string, Sprite> spriteLookup)
+    {
+        ClearDealPreview();
+        hasDealPreview = false;
+        SetHand(hand, spriteLookup);
+    }
+
+    public void ClearDealPreview()
+    {
+        for (int i = dealPreviewCards.Count - 1; i >= 0; i--)
+        {
+            GameObject previewCard = dealPreviewCards[i];
+            if (previewCard != null)
+                Destroy(previewCard);
+        }
+
+        dealPreviewCards.Clear();
+        hasDealPreview = false;
     }
 
     public List<Card.CardData> GetSelectedCards()
