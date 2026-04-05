@@ -1,49 +1,46 @@
 fileFormatVersion: 2
-guid: 9329b78f4c82e134784e3af090bc3d4e
+guid: f73fa646277c54a46994c333fa20561d
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -3200901572440252597
-    second: spades-9_0
+      213: 3650373935745423769
+    second: spades-8_0
   - first:
-      213: 5249711125046504924
-    second: spades-9_1
+      213: -5964399464299353454
+    second: spades-8_1
   - first:
-      213: 3732137197868255696
-    second: spades-9_2
+      213: 103701724444969328
+    second: spades-8_2
   - first:
-      213: 1896545961728263627
-    second: spades-9_3
+      213: -6825146077947439077
+    second: spades-8_3
   - first:
-      213: 6603916385575306528
-    second: spades-9_4
+      213: 8008052451421862924
+    second: spades-8_4
   - first:
-      213: 2568037986498858721
-    second: spades-9_5
+      213: 7112495233002906778
+    second: spades-8_5
   - first:
-      213: -3751234138567090186
-    second: spades-9_6
+      213: -545244988841721245
+    second: spades-8_6
   - first:
-      213: -950180473270766163
-    second: spades-9_7
+      213: 4087864487503031095
+    second: spades-8_7
   - first:
-      213: -2024919167705299962
-    second: spades-9_8
+      213: -956219041558763373
+    second: spades-8_8
   - first:
-      213: -1395104869923830508
-    second: spades-9_9
+      213: 4755928337426103639
+    second: spades-8_9
   - first:
-      213: -3361365936025315172
-    second: spades-9_10
+      213: -3920107619467156171
+    second: spades-8_10
   - first:
-      213: 5747026565823840119
-    second: spades-9_11
+      213: 3170211812729766420
+    second: spades-8_11
   - first:
-      213: -450809465682381962
-    second: spades-9_12
-  - first:
-      213: -6998122085129713573
-    second: spades-9_13
+      213: 4272407269857119820
+    second: spades-8_12
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -165,12 +162,12 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: spades-9_0
+      name: spades-8_0
       rect:
         serializedVersion: 2
         x: 5
         y: 79
-        width: 10
+        width: 9
         height: 10
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -180,14 +177,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: b4f95bd9afc1493d0800000000000000
-      internalID: -3200901572440252597
+      spriteID: 999537901cbb8a230800000000000000
+      internalID: 3650373935745423769
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-9_1
+      name: spades-8_1
       rect:
         serializedVersion: 2
         x: 5
@@ -202,14 +199,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: cdd20dd3478bad840800000000000000
-      internalID: 5249711125046504924
+      spriteID: 29a28e7b9423a3da0800000000000000
+      internalID: -5964399464299353454
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-9_2
+      name: spades-8_2
       rect:
         serializedVersion: 2
         x: 18
@@ -224,14 +221,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 0d985fbf1073bc330800000000000000
-      internalID: 3732137197868255696
+      spriteID: 07943204b2c607100800000000000000
+      internalID: 103701724444969328
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-9_3
+      name: spades-8_3
       rect:
         serializedVersion: 2
         x: 40
@@ -246,14 +243,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: bc5c30df082e15a10800000000000000
-      internalID: 1896545961728263627
+      spriteID: b18dac3adc53841a0800000000000000
+      internalID: -6825146077947439077
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-9_4
+      name: spades-8_4
       rect:
         serializedVersion: 2
         x: 18
@@ -268,14 +265,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 0250990b6f2d5ab50800000000000000
-      internalID: 6603916385575306528
+      spriteID: c0c32bda641522f60800000000000000
+      internalID: 8008052451421862924
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-9_5
+      name: spades-8_5
       rect:
         serializedVersion: 2
         x: 29
@@ -290,14 +287,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 1ee49f251f083a320800000000000000
-      internalID: 2568037986498858721
+      spriteID: a942cc51bb8a4b260800000000000000
+      internalID: 7112495233002906778
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-9_6
+      name: spades-8_6
       rect:
         serializedVersion: 2
         x: 40
@@ -312,14 +309,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 6ffd3650d60f0fbc0800000000000000
-      internalID: -3751234138567090186
+      spriteID: 362078c4296ee68f0800000000000000
+      internalID: -545244988841721245
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-9_7
+      name: spades-8_7
       rect:
         serializedVersion: 2
         x: 18
@@ -334,36 +331,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: da5fe22d4e740d2f0800000000000000
-      internalID: -950180473270766163
+      spriteID: 73b6d8bc7130bb830800000000000000
+      internalID: 4087864487503031095
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-9_8
-      rect:
-        serializedVersion: 2
-        x: 29
-        y: 22
-        width: 13
-        height: 12
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 604cb06deba06e3e0800000000000000
-      internalID: -2024919167705299962
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: spades-9_9
+      name: spades-8_8
       rect:
         serializedVersion: 2
         x: 40
@@ -378,14 +353,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 415c5cb238793ace0800000000000000
-      internalID: -1395104869923830508
+      spriteID: 398ec6419d3dab2f0800000000000000
+      internalID: -956219041558763373
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-9_10
+      name: spades-8_9
       rect:
         serializedVersion: 2
         x: 18
@@ -400,14 +375,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: c98dc1f8d770a51d0800000000000000
-      internalID: -3361365936025315172
+      spriteID: 75d3f79ff93700240800000000000000
+      internalID: 4755928337426103639
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-9_11
+      name: spades-8_10
       rect:
         serializedVersion: 2
         x: 40
@@ -422,36 +397,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 77fb9aa663a81cf40800000000000000
-      internalID: 5747026565823840119
+      spriteID: 535ab54c3eaf899c0800000000000000
+      internalID: -3920107619467156171
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-9_12
-      rect:
-        serializedVersion: 2
-        x: 56
-        y: 6
-        width: 10
-        height: 10
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 6733e90fd276eb9f0800000000000000
-      internalID: -450809465682381962
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: spades-9_13
+      name: spades-8_11
       rect:
         serializedVersion: 2
         x: 57
@@ -466,8 +419,30 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: b58070d8a0da1ee90800000000000000
-      internalID: -6998122085129713573
+      spriteID: 4124180e8dadefb20800000000000000
+      internalID: 3170211812729766420
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: spades-8_12
+      rect:
+        serializedVersion: 2
+        x: 57
+        y: 6
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c4e41a796c3aa4b30800000000000000
+      internalID: 4272407269857119820
       vertices: []
       indices: 
       edges: []
@@ -486,20 +461,19 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      spades-9_0: -3200901572440252597
-      spades-9_1: 5249711125046504924
-      spades-9_10: -3361365936025315172
-      spades-9_11: 5747026565823840119
-      spades-9_12: -450809465682381962
-      spades-9_13: -6998122085129713573
-      spades-9_2: 3732137197868255696
-      spades-9_3: 1896545961728263627
-      spades-9_4: 6603916385575306528
-      spades-9_5: 2568037986498858721
-      spades-9_6: -3751234138567090186
-      spades-9_7: -950180473270766163
-      spades-9_8: -2024919167705299962
-      spades-9_9: -1395104869923830508
+      spades-8_0: 3650373935745423769
+      spades-8_1: -5964399464299353454
+      spades-8_10: -3920107619467156171
+      spades-8_11: 3170211812729766420
+      spades-8_12: 4272407269857119820
+      spades-8_2: 103701724444969328
+      spades-8_3: -6825146077947439077
+      spades-8_4: 8008052451421862924
+      spades-8_5: 7112495233002906778
+      spades-8_6: -545244988841721245
+      spades-8_7: 4087864487503031095
+      spades-8_8: -956219041558763373
+      spades-8_9: 4755928337426103639
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

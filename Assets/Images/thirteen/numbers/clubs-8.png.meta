@@ -1,46 +1,43 @@
 fileFormatVersion: 2
-guid: 7ce60a12c216ce24d815fc25fcb44077
+guid: a9c3264d23efb4e47827e81908438a4a
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 1631528807267942726
-    second: clubs-8_0
+      213: 1113572341183285280
+    second: clubs-7_0
   - first:
-      213: -1183926939417428340
-    second: clubs-8_1
+      213: -2546774691969393173
+    second: clubs-7_1
   - first:
-      213: 2372675789918322029
-    second: clubs-8_2
+      213: 1512465066037602076
+    second: clubs-7_2
   - first:
-      213: 7992001044055824305
-    second: clubs-8_3
+      213: -7269179264008755435
+    second: clubs-7_3
   - first:
-      213: -338025252609550119
-    second: clubs-8_4
+      213: 5915248296368847730
+    second: clubs-7_4
   - first:
-      213: 7284032622489279040
-    second: clubs-8_5
+      213: -6710462679012976686
+    second: clubs-7_5
   - first:
-      213: -3185888164706114305
-    second: clubs-8_6
+      213: -4790545936979495018
+    second: clubs-7_6
   - first:
-      213: -2809273125969939052
-    second: clubs-8_7
+      213: -3100530670505695729
+    second: clubs-7_7
   - first:
-      213: -5876196531415053916
-    second: clubs-8_8
+      213: 6913369036477421482
+    second: clubs-7_8
   - first:
-      213: -8992721838263993085
-    second: clubs-8_9
+      213: -1543965988426683351
+    second: clubs-7_9
   - first:
-      213: -3266190031166463758
-    second: clubs-8_10
+      213: -6735991425441641564
+    second: clubs-7_10
   - first:
-      213: 1336519604141047377
-    second: clubs-8_11
-  - first:
-      213: 5501544592731140357
-    second: clubs-8_12
+      213: 1977018958214389500
+    second: clubs-7_11
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -162,7 +159,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: clubs-8_0
+      name: clubs-7_0
       rect:
         serializedVersion: 2
         x: 5
@@ -177,14 +174,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 641c5065eca54a610800000000000000
-      internalID: 1631528807267942726
+      spriteID: 0280ee3f424347f00800000000000000
+      internalID: 1113572341183285280
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-8_1
+      name: clubs-7_1
       rect:
         serializedVersion: 2
         x: 5
@@ -199,14 +196,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: c8e3208a8b8d19fe0800000000000000
-      internalID: -1183926939417428340
+      spriteID: bed953a39e908acd0800000000000000
+      internalID: -2546774691969393173
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-8_2
+      name: clubs-7_2
       rect:
         serializedVersion: 2
         x: 18
@@ -221,14 +218,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: d6d30495f007de020800000000000000
-      internalID: 2372675789918322029
+      spriteID: c17eb54d6fa5df410800000000000000
+      internalID: 1512465066037602076
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-8_3
+      name: clubs-7_3
       rect:
         serializedVersion: 2
         x: 40
@@ -243,40 +240,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 1b79f7b2b9a49ee60800000000000000
-      internalID: 7992001044055824305
+      spriteID: 5176f1029ffae1b90800000000000000
+      internalID: -7269179264008755435
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-8_4
-      rect:
-        serializedVersion: 2
-        x: 18
-        y: 48
-        width: 13
-        height: 13
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 9d8981dd2d71f4bf0800000000000000
-      internalID: -338025252609550119
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: clubs-8_5
+      name: clubs-7_4
       rect:
         serializedVersion: 2
         x: 29
-        y: 59
+        y: 56
         width: 13
         height: 13
       alignment: 0
@@ -287,40 +262,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 04a94d3e315161560800000000000000
-      internalID: 7284032622489279040
+      spriteID: 27bbc473cfe271250800000000000000
+      internalID: 5915248296368847730
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-8_6
-      rect:
-        serializedVersion: 2
-        x: 40
-        y: 48
-        width: 13
-        height: 13
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: ff42290089379c3d0800000000000000
-      internalID: -3185888164706114305
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: clubs-8_7
+      name: clubs-7_5
       rect:
         serializedVersion: 2
         x: 18
-        y: 34
+        y: 41
         width: 13
         height: 13
       alignment: 0
@@ -331,18 +284,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 495b281e9f47309d0800000000000000
-      internalID: -2809273125969939052
+      spriteID: 2d75aea3fb5afd2a0800000000000000
+      internalID: -6710462679012976686
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-8_8
+      name: clubs-7_6
       rect:
         serializedVersion: 2
         x: 40
-        y: 34
+        y: 41
         width: 13
         height: 13
       alignment: 0
@@ -353,18 +306,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 4a98f9a536e837ea0800000000000000
-      internalID: -5876196531415053916
+      spriteID: 697752a0adf848db0800000000000000
+      internalID: -4790545936979495018
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-8_9
+      name: clubs-7_7
       rect:
         serializedVersion: 2
-        x: 18
-        y: 12
+        x: 29
+        y: 26
         width: 13
         height: 13
       alignment: 0
@@ -375,36 +328,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 30d7062322f633380800000000000000
-      internalID: -8992721838263993085
+      spriteID: f06ed4158c3b8f4d0800000000000000
+      internalID: -3100530670505695729
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-8_10
-      rect:
-        serializedVersion: 2
-        x: 40
-        y: 12
-        width: 13
-        height: 13
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 2f0a66fb8792ca2d0800000000000000
-      internalID: -3266190031166463758
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: clubs-8_11
+      name: clubs-7_8
       rect:
         serializedVersion: 2
         x: 57
@@ -419,14 +350,58 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 15e3c20bf754c8210800000000000000
-      internalID: 1336519604141047377
+      spriteID: aa7db64928831ff50800000000000000
+      internalID: 6913369036477421482
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-8_12
+      name: clubs-7_9
+      rect:
+        serializedVersion: 2
+        x: 18
+        y: 12
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92cea822d1bb29ae0800000000000000
+      internalID: -1543965988426683351
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: clubs-7_10
+      rect:
+        serializedVersion: 2
+        x: 40
+        y: 12
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4ab4974cc73f482a0800000000000000
+      internalID: -6735991425441641564
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: clubs-7_11
       rect:
         serializedVersion: 2
         x: 57
@@ -441,8 +416,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 501f5bd98a9695c40800000000000000
-      internalID: 5501544592731140357
+      spriteID: cfed49e8448cf6b10800000000000000
+      internalID: 1977018958214389500
       vertices: []
       indices: 
       edges: []
@@ -461,19 +436,18 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      clubs-8_0: 1631528807267942726
-      clubs-8_1: -1183926939417428340
-      clubs-8_10: -3266190031166463758
-      clubs-8_11: 1336519604141047377
-      clubs-8_12: 5501544592731140357
-      clubs-8_2: 2372675789918322029
-      clubs-8_3: 7992001044055824305
-      clubs-8_4: -338025252609550119
-      clubs-8_5: 7284032622489279040
-      clubs-8_6: -3185888164706114305
-      clubs-8_7: -2809273125969939052
-      clubs-8_8: -5876196531415053916
-      clubs-8_9: -8992721838263993085
+      clubs-7_0: 1113572341183285280
+      clubs-7_1: -2546774691969393173
+      clubs-7_10: -6735991425441641564
+      clubs-7_11: 1977018958214389500
+      clubs-7_2: 1512465066037602076
+      clubs-7_3: -7269179264008755435
+      clubs-7_4: 5915248296368847730
+      clubs-7_5: -6710462679012976686
+      clubs-7_6: -4790545936979495018
+      clubs-7_7: -3100530670505695729
+      clubs-7_8: 6913369036477421482
+      clubs-7_9: -1543965988426683351
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

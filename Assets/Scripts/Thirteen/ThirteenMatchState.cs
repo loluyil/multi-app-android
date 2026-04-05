@@ -35,6 +35,9 @@ public class ThirteenMatchState
         if (!IsSeatValid(seat))
             return Fail("Seat is invalid.");
 
+        if (HasPassed(seat) && CurrentHand.IsValid)
+            return Fail($"Seat {seat} already passed and is out for this trick.");
+
         ThirteenRules.AnalyzedHand analyzedHand = ThirteenRules.Analyze(cards);
         if (!analyzedHand.IsValid)
             return Fail("Selected cards do not form a valid hand.", analyzedHand);
@@ -47,8 +50,7 @@ public class ThirteenMatchState
 
         CurrentHand = analyzedHand;
         LeadingSeat = seat;
-        ClearPasses();
-        CurrentTurnSeat = GetNextSeat(seat);
+        CurrentTurnSeat = GetNextActiveSeat(seat);
 
         Debug.Log($"[Thirteen] Seat {seat} played {ThirteenRules.Describe(analyzedHand)}");
         return new PlayResult(true, "Play accepted.", analyzedHand);
@@ -77,6 +79,12 @@ public class ThirteenMatchState
         if (seat == LeadingSeat)
         {
             reason = "The leading seat cannot pass on its own trick.";
+            return false;
+        }
+
+        if (passed[seat])
+        {
+            reason = $"Seat {seat} already passed this trick.";
             return false;
         }
 

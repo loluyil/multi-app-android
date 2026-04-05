@@ -1,22 +1,22 @@
 fileFormatVersion: 2
-guid: e1c294869c655d44ba81a023a22bdd18
+guid: 554539330d39116498cf6ba340d476d7
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -4293085450498962297
-    second: spades-11_0
+      213: -7142551996904671034
+    second: spades-10_0
   - first:
-      213: 2371152804652814012
-    second: spades-11_1
+      213: -2860411690631663633
+    second: spades-10_1
   - first:
-      213: 8255840688976115654
-    second: spades-11_2
+      213: 7546017734319371589
+    second: spades-10_2
   - first:
-      213: 4798900779165171946
-    second: spades-11_3
+      213: 1130915129900193541
+    second: spades-10_3
   - first:
-      213: 733624832737288465
-    second: spades-11_4
+      213: -5802211192285804309
+    second: spades-10_4
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -138,7 +138,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: spades-11_0
+      name: spades-10_0
       rect:
         serializedVersion: 2
         x: 5
@@ -153,14 +153,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 78c8c9c4785eb64c0800000000000000
-      internalID: -4293085450498962297
+      spriteID: 6c87dba3dce80ec90800000000000000
+      internalID: -7142551996904671034
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-11_1
+      name: spades-10_1
       rect:
         serializedVersion: 2
         x: 5
@@ -175,20 +175,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: cbe8085b9e608e020800000000000000
-      internalID: 2371152804652814012
+      spriteID: fef6684f8b6cd48d0800000000000000
+      internalID: -2860411690631663633
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-11_2
+      name: spades-10_2
       rect:
         serializedVersion: 2
-        x: 10
-        y: 6
-        width: 51
-        height: 83
+        x: 13
+        y: 4
+        width: 45
+        height: 87
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -197,14 +197,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 6c733a48d53a29270800000000000000
-      internalID: 8255840688976115654
+      spriteID: 54577ea1627d8b860800000000000000
+      internalID: 7546017734319371589
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-11_3
+      name: spades-10_3
       rect:
         serializedVersion: 2
         x: 57
@@ -219,14 +219,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: ae04c7e35de199240800000000000000
-      internalID: 4798900779165171946
+      spriteID: 507d0dc9151d1bf00800000000000000
+      internalID: 1130915129900193541
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: spades-11_4
+      name: spades-10_4
       rect:
         serializedVersion: 2
         x: 57
@@ -241,8 +241,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 11126b106eb5e2a00800000000000000
-      internalID: 733624832737288465
+      spriteID: be8420c79a76a7fa0800000000000000
+      internalID: -5802211192285804309
       vertices: []
       indices: 
       edges: []
@@ -261,11 +261,11 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      spades-11_0: -4293085450498962297
-      spades-11_1: 2371152804652814012
-      spades-11_2: 8255840688976115654
-      spades-11_3: 4798900779165171946
-      spades-11_4: 733624832737288465
+      spades-10_0: -7142551996904671034
+      spades-10_1: -2860411690631663633
+      spades-10_2: 7546017734319371589
+      spades-10_3: 1130915129900193541
+      spades-10_4: -5802211192285804309
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

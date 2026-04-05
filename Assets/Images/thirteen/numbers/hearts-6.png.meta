@@ -1,40 +1,37 @@
 fileFormatVersion: 2
-guid: a221afe31c24c98488c1f4fc2820e5bf
+guid: 9c481b070c67cfd459918cfd13cdc90c
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -4222809657027527566
-    second: hearts-6_0
+      213: 3966036564096180646
+    second: hearts-5_0
   - first:
-      213: -4784438195087184189
-    second: hearts-6_1
+      213: -5915359137532964879
+    second: hearts-5_1
   - first:
-      213: 8568507389770663102
-    second: hearts-6_2
+      213: 701397386122600810
+    second: hearts-5_2
   - first:
-      213: -2072726630359049781
-    second: hearts-6_3
+      213: -669458404165490207
+    second: hearts-5_3
   - first:
-      213: -4915341254023475033
-    second: hearts-6_4
+      213: 2886222133918814409
+    second: hearts-5_4
   - first:
-      213: -6514977789664214411
-    second: hearts-6_5
+      213: 2997434945938304174
+    second: hearts-5_5
   - first:
-      213: 5384036220159245260
-    second: hearts-6_6
+      213: -439321257641632492
+    second: hearts-5_6
   - first:
-      213: 3264491106682266912
-    second: hearts-6_7
+      213: 6652476341078950744
+    second: hearts-5_7
   - first:
-      213: -640825094729676998
-    second: hearts-6_8
+      213: 3983147632998127575
+    second: hearts-5_8
   - first:
-      213: 2124739014410967128
-    second: hearts-6_9
-  - first:
-      213: 3430245640131770955
-    second: hearts-6_10
+      213: 6314118581116140134
+    second: hearts-5_9
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -156,7 +153,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: hearts-6_0
+      name: hearts-5_0
       rect:
         serializedVersion: 2
         x: 5
@@ -171,14 +168,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 27cf8c68df09565c0800000000000000
-      internalID: -4222809657027527566
+      spriteID: 6a1e929fd313a0730800000000000000
+      internalID: 3966036564096180646
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-6_1
+      name: hearts-5_1
       rect:
         serializedVersion: 2
         x: 5
@@ -193,14 +190,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 3ce64048fc24a9db0800000000000000
-      internalID: -4784438195087184189
+      spriteID: 1ff8c70943c68eda0800000000000000
+      internalID: -5915359137532964879
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-6_2
+      name: hearts-5_2
       rect:
         serializedVersion: 2
         x: 18
@@ -215,14 +212,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: eb40796b21479e670800000000000000
-      internalID: 8568507389770663102
+      spriteID: a61a93ed43ddbb900800000000000000
+      internalID: 701397386122600810
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-6_3
+      name: hearts-5_3
       rect:
         serializedVersion: 2
         x: 40
@@ -237,36 +234,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: bc9d4f88c123c33e0800000000000000
-      internalID: -2072726630359049781
+      spriteID: 1e9e0dbd02b95b6f0800000000000000
+      internalID: -669458404165490207
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-6_4
-      rect:
-        serializedVersion: 2
-        x: 29
-        y: 57
-        width: 13
-        height: 12
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 7a09b1c0c2339cbb0800000000000000
-      internalID: -4915341254023475033
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: hearts-6_5
+      name: hearts-5_4
       rect:
         serializedVersion: 2
         x: 18
@@ -281,14 +256,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 5724187d7362695a0800000000000000
-      internalID: -6514977789664214411
+      spriteID: 9c0d91b2dbbed0820800000000000000
+      internalID: 2886222133918814409
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-6_6
+      name: hearts-5_5
       rect:
         serializedVersion: 2
         x: 40
@@ -303,14 +278,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: ccbbd689a60f7ba40800000000000000
-      internalID: 5384036220159245260
+      spriteID: eacaef5c337099920800000000000000
+      internalID: 2997434945938304174
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-6_7
+      name: hearts-5_6
       rect:
         serializedVersion: 2
         x: 18
@@ -325,14 +300,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 025e7329d5dcd4d20800000000000000
-      internalID: 3264491106682266912
+      spriteID: 41d1effc4a737e9f0800000000000000
+      internalID: -439321257641632492
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-6_8
+      name: hearts-5_7
       rect:
         serializedVersion: 2
         x: 40
@@ -347,14 +322,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: a374b79b8f45b17f0800000000000000
-      internalID: -640825094729676998
+      spriteID: 85383b26cf7525c50800000000000000
+      internalID: 6652476341078950744
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-6_9
+      name: hearts-5_8
       rect:
         serializedVersion: 2
         x: 57
@@ -369,14 +344,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 858116250e69c7d10800000000000000
-      internalID: 2124739014410967128
+      spriteID: 7d79ac82babf64730800000000000000
+      internalID: 3983147632998127575
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-6_10
+      name: hearts-5_9
       rect:
         serializedVersion: 2
         x: 57
@@ -391,8 +366,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: b4af2684c3eaa9f20800000000000000
-      internalID: 3430245640131770955
+      spriteID: 66afe19556140a750800000000000000
+      internalID: 6314118581116140134
       vertices: []
       indices: 
       edges: []
@@ -411,17 +386,16 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      hearts-6_0: -4222809657027527566
-      hearts-6_1: -4784438195087184189
-      hearts-6_10: 3430245640131770955
-      hearts-6_2: 8568507389770663102
-      hearts-6_3: -2072726630359049781
-      hearts-6_4: -4915341254023475033
-      hearts-6_5: -6514977789664214411
-      hearts-6_6: 5384036220159245260
-      hearts-6_7: 3264491106682266912
-      hearts-6_8: -640825094729676998
-      hearts-6_9: 2124739014410967128
+      hearts-5_0: 3966036564096180646
+      hearts-5_1: -5915359137532964879
+      hearts-5_2: 701397386122600810
+      hearts-5_3: -669458404165490207
+      hearts-5_4: 2886222133918814409
+      hearts-5_5: 2997434945938304174
+      hearts-5_6: -439321257641632492
+      hearts-5_7: 6652476341078950744
+      hearts-5_8: 3983147632998127575
+      hearts-5_9: 6314118581116140134
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
