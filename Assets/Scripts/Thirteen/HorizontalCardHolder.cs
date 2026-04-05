@@ -2,8 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using DG.Tweening;
-using System;
 
 public class HorizontalCardHolder : MonoBehaviour
 {
@@ -14,16 +14,19 @@ public class HorizontalCardHolder : MonoBehaviour
     [Header("Setup")]
     [SerializeField] private int slotCount = 13;
     [SerializeField] private RectTransform dragLayer;
+    [SerializeField] private RectTransform playArea;
 
     [Header("Tweening")]
     [SerializeField] private float shiftDuration = 0.18f;
     [SerializeField] private float returnDuration = 0.2f;
+    [SerializeField] private float playAreaDuration = 0.22f;
     [SerializeField] private float dragScale = 1.08f;
     [SerializeField] private Vector2 shadowOffset = new Vector2(0f, -18f);
     [SerializeField] private float shadowReturnScale = 0.9f;
     [SerializeField] private float multiDragSeparation = 42f;
     [SerializeField] private Ease shiftEase = Ease.OutCubic;
     [SerializeField] private Ease returnEase = Ease.OutCubic;
+    [SerializeField] private Ease playAreaEase = Ease.OutCubic;
     [SerializeField] private Ease dragScaleEase = Ease.OutQuad;
 
     private Card draggedCard;
@@ -35,6 +38,9 @@ public class HorizontalCardHolder : MonoBehaviour
     private bool initialized;
     private readonly List<Card> activeDragGroup = new List<Card>();
     private int draggedCardGroupIndex;
+    private readonly List<RectTransform> playAreaSlots = new List<RectTransform>();
+    private Camera uiCamera;
+    private int handStartSlotIndex;
 
     private void Awake()
     {
@@ -45,8 +51,22 @@ public class HorizontalCardHolder : MonoBehaviour
         {
             Canvas canvas = GetComponentInParent<Canvas>();
             if (canvas != null)
+            {
                 dragLayer = canvas.transform as RectTransform;
+                uiCamera = canvas.worldCamera;
+            }
         }
+
+        if (playArea == null)
+        {
+            Transform playAreaTransform = holderRect.parent != null
+                ? holderRect.parent.Find("PlayArea")
+                : null;
+
+            if (playAreaTransform != null)
+                playArea = playAreaTransform as RectTransform;
+        }
+
         InitializeHand();
     }
 
@@ -113,10 +133,18 @@ public class HorizontalCardHolder : MonoBehaviour
         if (card == null || previewIndex < 0)
             return;
 
+        if (TryPlayDragGroup())
+        {
+            draggedCard = null;
+            previewIndex = -1;
+            return;
+        }
+
         foreach (Card dragCard in activeDragGroup)
             dragCard.SetReturning(true);
 
-        cards.InsertRange(previewIndex, activeDragGroup);
+        int restoreIndex = Mathf.Clamp(previewIndex - handStartSlotIndex, 0, cards.Count);
+        cards.InsertRange(restoreIndex, activeDragGroup);
 
         int completedCount = 0;
         int expectedCount = activeDragGroup.Count;
@@ -275,10 +303,12 @@ public class HorizontalCardHolder : MonoBehaviour
 
         int cardIndex = 0;
         int groupCount = activeDragGroup.Count;
+        int startSlotIndex = handStartSlotIndex;
+        int activePreviewIndex = draggedCard != null ? previewIndex : -1;
 
-        for (int slotIndex = 0; slotIndex < slots.Count; slotIndex++)
+        for (int slotIndex = startSlotIndex; slotIndex < slots.Count; slotIndex++)
         {
-            if (draggedCard != null && slotIndex >= previewIndex && slotIndex < previewIndex + groupCount)
+            if (draggedCard != null && slotIndex >= activePreviewIndex && slotIndex < activePreviewIndex + groupCount)
                 continue;
 
             if (cardIndex >= cards.Count)
@@ -370,5 +400,97 @@ public class HorizontalCardHolder : MonoBehaviour
             card.transform.SetAsLastSibling();
             card.PlaceShadowBehindCard();
         }
+    }
+
+    private bool TryPlayDragGroup()
+    {
+        if (playArea == null || draggedCard == null || activeDragGroup.Count == 0)
+            return false;
+
+        Vector2 screenPoint = draggedCard.GetLastPointerScreenPosition();
+        if (!RectTransformUtility.RectangleContainsScreenPoint(playArea, screenPoint, uiCamera))
+            return false;
+
+        foreach (Card dragCard in activeDragGroup)
+        {
+            dragCard.SetReturning(true);
+            dragCard.SetSelected(false, false);
+            dragCard.SetInteractionEnabled(false);
+        }
+
+        List<RectTransform> targetSlots = CreatePlayAreaSlots(activeDragGroup.Count);
+        int completedCount = 0;
+        int expectedCount = activeDragGroup.Count;
+
+        for (int i = 0; i < activeDragGroup.Count; i++)
+        {
+            Card dragCard = activeDragGroup[i];
+            RectTransform targetSlot = targetSlots[i];
+            Vector3 targetWorldPosition = targetSlot.TransformPoint(Vector2.zero);
+
+            dragCard.KillTweens();
+            dragCard.TweenScale(Vector3.one, playAreaDuration, playAreaEase);
+            if (dragCard == draggedCard)
+                dragCard.TweenShadowScale(shadowReturnScale, playAreaDuration, playAreaEase);
+
+            dragCard.RectTransform.DOMove(targetWorldPosition, playAreaDuration)
+                .SetEase(playAreaEase)
+                .OnUpdate(() =>
+                {
+                    dragCard.UpdateShadow(shadowOffset);
+                })
+                .OnComplete(() =>
+                {
+                    if (dragCard == null || targetSlot == null)
+                        return;
+
+                    dragCard.transform.SetParent(targetSlot, false);
+                    dragCard.SnapToLocal(Vector2.zero);
+                    dragCard.SnapScale(Vector3.one);
+                    dragCard.SetReturning(false);
+                    dragCard.HideShadow();
+
+                    completedCount++;
+                    if (completedCount >= expectedCount)
+                    {
+                        handStartSlotIndex = GetCenteredStartIndex(cards.Count);
+                        if (playArea != null)
+                            LayoutRebuilder.ForceRebuildLayoutImmediate(playArea);
+
+                        activeDragGroup.Clear();
+                        ArrangeCards(true);
+                    }
+                });
+        }
+
+        return true;
+    }
+
+    private List<RectTransform> CreatePlayAreaSlots(int count)
+    {
+        List<RectTransform> createdSlots = new List<RectTransform>(count);
+        if (playArea == null || slotPrefab == null)
+            return createdSlots;
+
+        for (int i = 0; i < count; i++)
+        {
+            GameObject slotObject = Instantiate(slotPrefab, playArea);
+            slotObject.name = "PlayedSlot_" + playAreaSlots.Count;
+            RectTransform slotRect = slotObject.GetComponent<RectTransform>();
+            playAreaSlots.Add(slotRect);
+            createdSlots.Add(slotRect);
+        }
+
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(playArea);
+        return createdSlots;
+    }
+
+    private int GetCenteredStartIndex(int cardCount)
+    {
+        return Mathf.Clamp(
+            Mathf.RoundToInt((slots.Count - cardCount) * 0.5f),
+            0,
+            Mathf.Max(0, slots.Count - cardCount));
     }
 }

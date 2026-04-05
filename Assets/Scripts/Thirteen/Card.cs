@@ -66,14 +66,17 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
     private Tween shadowScaleTween;
     private RectTransform shadowRect;
     private Graphic shadowGraphic;
+    private Button button;
     private Transform originalShadowParent;
     private int originalShadowSiblingIndex;
     private float shadowScaleMultiplier = 1f;
     private bool isSelected;
     private bool isDragging;
     private bool isReturning;
+    private bool interactionEnabled = true;
     private Vector3 lastWorldPosition;
     private bool hasLastWorldPosition;
+    private Vector2 lastPointerScreenPosition;
     private CardData data;
 
     public RectTransform RectTransform => rect;
@@ -85,6 +88,7 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
         rect = GetComponent<RectTransform>();
         canvas = GetComponentInParent<Canvas>();
         group = GetComponent<CanvasGroup>();
+        button = GetComponent<Button>();
         artImage = transform.Find("Image")?.GetComponent<Image>();
         shadowRect = transform.Find("Shadow") as RectTransform;
 
@@ -126,22 +130,25 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (isReturning)
+        if (isReturning || !interactionEnabled)
             return;
 
         KillTweens();
         isDragging = true;
+        lastPointerScreenPosition = eventData.position;
         if (group != null) group.blocksRaycasts = false;
         BeginDragEvent.Invoke(this);
     }
 
     public void OnDrag(PointerEventData eventData)
     {
+        lastPointerScreenPosition = eventData.position;
         rect.anchoredPosition += eventData.delta / canvas.scaleFactor;
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
+        lastPointerScreenPosition = eventData.position;
         isDragging = false;
         if (group != null) group.blocksRaycasts = true;
         EndDragEvent.Invoke(this);
@@ -149,7 +156,7 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        if (isDragging || isReturning)
+        if (isDragging || isReturning || !interactionEnabled)
             return;
 
         ClickedEvent.Invoke(this);
@@ -280,7 +287,7 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
         isReturning = returning;
 
         if (group != null)
-            group.blocksRaycasts = !returning && !isDragging;
+            group.blocksRaycasts = interactionEnabled && !returning && !isDragging;
     }
 
     public Vector3 GetTargetWorldPosition(RectTransform slotRect)
@@ -299,6 +306,25 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
             artImage.sprite = sprite;
 
         gameObject.name = $"{GetSuitSpriteName(newData.suit)}-{newData.rank}";
+    }
+
+    public void SetInteractionEnabled(bool enabled, bool updateButtonState = true)
+    {
+        interactionEnabled = enabled;
+
+        if (button != null && updateButtonState)
+            button.interactable = enabled;
+
+        if (group != null)
+        {
+            group.interactable = enabled;
+            group.blocksRaycasts = enabled && !isDragging && !isReturning;
+        }
+    }
+
+    public Vector2 GetLastPointerScreenPosition()
+    {
+        return lastPointerScreenPosition;
     }
 
     private void KillPositionTween()

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -16,6 +17,15 @@ public class ThirteenDeckDealer : MonoBehaviour
 
     [Header("References")]
     [SerializeField] private HorizontalCardHolder playerHandHolder;
+    [SerializeField] private RectTransform player2Container;
+    [SerializeField] private RectTransform player3Container;
+    [SerializeField] private RectTransform player4Container;
+    [SerializeField] private GameObject cardBackPrefab;
+
+    [Header("Opponent Card Back Layout")]
+    [SerializeField] private Vector2 topCardBackSize = new Vector2(110f, 150f);
+    [SerializeField] private Vector2 sideCardBackSize = new Vector2(90f, 130f);
+    [SerializeField] private float sideCardBackRotation = 90f;
 
     [Header("Art")]
     [SerializeField] private string spriteFolder = "Assets/Images/thirteen/numbers";
@@ -33,6 +43,7 @@ public class ThirteenDeckDealer : MonoBehaviour
 
     private void Awake()
     {
+        AutoAssignSceneReferences();
         RebuildSpriteLookup();
     }
 
@@ -56,6 +67,10 @@ public class ThirteenDeckDealer : MonoBehaviour
 
         if (playerHandHolder != null)
             playerHandHolder.SetHand(playerHand, spriteLookup);
+
+        PopulateOpponentHand(player2Container, opponentHandA.Count, true);
+        PopulateOpponentHand(player3Container, opponentHandB.Count, false);
+        PopulateOpponentHand(player4Container, opponentHandC.Count, true);
     }
 
     public IReadOnlyList<Card.CardData> GetPlayerHand() => playerHand;
@@ -137,6 +152,90 @@ public class ThirteenDeckDealer : MonoBehaviour
 
             spriteLookup[entry.key] = entry.sprite;
         }
+    }
+
+    private void AutoAssignSceneReferences()
+    {
+        if (playerHandHolder == null)
+            playerHandHolder = FindFirstObjectByType<HorizontalCardHolder>();
+
+        if (player2Container == null)
+            player2Container = FindContainer("Player2");
+
+        if (player3Container == null)
+            player3Container = FindContainer("Player3");
+
+        if (player4Container == null)
+            player4Container = FindContainer("Player4");
+    }
+
+    private static RectTransform FindContainer(string name)
+    {
+        GameObject found = GameObject.Find(name);
+        return found != null ? found.GetComponent<RectTransform>() : null;
+    }
+
+    private void PopulateOpponentHand(RectTransform container, int count, bool isSidePlayer)
+    {
+        if (container == null || cardBackPrefab == null)
+            return;
+
+        for (int i = container.childCount - 1; i >= 0; i--)
+            Destroy(container.GetChild(i).gameObject);
+
+        for (int i = 0; i < count; i++)
+        {
+            GameObject cardBack = Instantiate(cardBackPrefab, container);
+            cardBack.name = $"CardBack_{i}";
+
+            Card card = cardBack.GetComponent<Card>();
+            if (card != null)
+            {
+                card.SetInteractionEnabled(false, false);
+                card.enabled = false;
+            }
+
+            Button button = cardBack.GetComponent<Button>();
+            if (button != null)
+            {
+                button.transition = Selectable.Transition.None;
+                button.enabled = false;
+            }
+
+            CanvasGroup canvasGroup = cardBack.GetComponent<CanvasGroup>();
+            if (canvasGroup != null)
+            {
+                canvasGroup.interactable = true;
+                canvasGroup.blocksRaycasts = false;
+                canvasGroup.alpha = 1f;
+            }
+
+            Image image = cardBack.GetComponent<Image>();
+            if (image != null)
+                image.color = Color.white;
+
+            ConfigureCardBackTransform(cardBack.GetComponent<RectTransform>(), isSidePlayer);
+        }
+
+        LayoutRebuilder.ForceRebuildLayoutImmediate(container);
+    }
+
+    private void ConfigureCardBackTransform(RectTransform rectTransform, bool isSidePlayer)
+    {
+        if (rectTransform == null)
+            return;
+
+        LayoutElement layoutElement = rectTransform.GetComponent<LayoutElement>();
+        if (layoutElement == null)
+            layoutElement = rectTransform.gameObject.AddComponent<LayoutElement>();
+
+        Vector2 targetSize = isSidePlayer ? sideCardBackSize : topCardBackSize;
+        layoutElement.preferredWidth = targetSize.x;
+        layoutElement.preferredHeight = targetSize.y;
+        rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, targetSize.x);
+        rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, targetSize.y);
+        rectTransform.localScale = Vector3.one;
+        rectTransform.localRotation = Quaternion.Euler(0f, 0f, isSidePlayer ? sideCardBackRotation : 0f);
     }
 
 #if UNITY_EDITOR
