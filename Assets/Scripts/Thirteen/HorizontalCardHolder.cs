@@ -16,6 +16,10 @@ public class HorizontalCardHolder : MonoBehaviour
     [SerializeField] private RectTransform dragLayer;
     [SerializeField] private RectTransform playArea;
 
+    [Header("Rules")]
+    [SerializeField] private int localPlayerSeat = 0;
+    [SerializeField] private int startingSeat = 0;
+
     [Header("Tweening")]
     [SerializeField] private float shiftDuration = 0.18f;
     [SerializeField] private float returnDuration = 0.2f;
@@ -41,6 +45,7 @@ public class HorizontalCardHolder : MonoBehaviour
     private readonly List<RectTransform> playAreaSlots = new List<RectTransform>();
     private Camera uiCamera;
     private int handStartSlotIndex;
+    private ThirteenMatchState matchState;
 
     private void Awake()
     {
@@ -66,6 +71,9 @@ public class HorizontalCardHolder : MonoBehaviour
             if (playAreaTransform != null)
                 playArea = playAreaTransform as RectTransform;
         }
+
+        matchState = new ThirteenMatchState(startingSeat);
+        Debug.Log($"[Thirteen] Match initialized. Starting seat: {startingSeat}");
 
         InitializeHand();
     }
@@ -411,6 +419,9 @@ public class HorizontalCardHolder : MonoBehaviour
         if (!RectTransformUtility.RectangleContainsScreenPoint(playArea, screenPoint, uiCamera))
             return false;
 
+        if (!CanPlayDraggedCards())
+            return false;
+
         foreach (Card dragCard in activeDragGroup)
         {
             dragCard.SetReturning(true);
@@ -463,6 +474,30 @@ public class HorizontalCardHolder : MonoBehaviour
                 });
         }
 
+        return true;
+    }
+
+    private bool CanPlayDraggedCards()
+    {
+        List<Card.CardData> selectedCards = activeDragGroup
+            .Where(card => card != null)
+            .Select(card => card.Data)
+            .ToList();
+
+        if (selectedCards.Count == 0)
+            return false;
+
+        if (matchState == null)
+            matchState = new ThirteenMatchState(startingSeat);
+
+        ThirteenMatchState.PlayResult result = matchState.TryPlay(localPlayerSeat, selectedCards);
+        if (!result.Success)
+        {
+            Debug.Log($"[Thirteen] Rejected play: {result.Reason}");
+            return false;
+        }
+
+        Debug.Log($"[Thirteen] Confirmed play: {ThirteenRules.Describe(result.Hand)}");
         return true;
     }
 
