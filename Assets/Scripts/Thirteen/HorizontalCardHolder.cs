@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 using DG.Tweening;
 
 public class HorizontalCardHolder : MonoBehaviour
@@ -16,41 +15,37 @@ public class HorizontalCardHolder : MonoBehaviour
     [SerializeField] private RectTransform dragLayer;
     [SerializeField] private RectTransform playArea;
 
-    [Header("Rules")]
-    [SerializeField] private int localPlayerSeat = 0;
-    [SerializeField] private int startingSeat = 0;
-
     [Header("Tweening")]
     [SerializeField] private float shiftDuration = 0.18f;
     [SerializeField] private float returnDuration = 0.2f;
     [SerializeField] private float playAreaDuration = 0.22f;
     [SerializeField] private float dragScale = 1.08f;
     [SerializeField] private Vector2 shadowOffset = new Vector2(0f, -18f);
-    [SerializeField] private float shadowReturnScale = 0.9f;
     [SerializeField] private float multiDragSeparation = 42f;
     [SerializeField] private Ease shiftEase = Ease.OutCubic;
     [SerializeField] private Ease returnEase = Ease.OutCubic;
     [SerializeField] private Ease playAreaEase = Ease.OutCubic;
     [SerializeField] private Ease dragScaleEase = Ease.OutQuad;
 
-    private Card draggedCard;
-    private RectTransform holderRect;
-    private HorizontalLayoutGroup layoutGroup;
     private readonly List<Card> cards = new List<Card>();
     private readonly List<RectTransform> slots = new List<RectTransform>();
-    private int previewIndex = -1;
-    private bool initialized;
     private readonly List<Card> activeDragGroup = new List<Card>();
-    private int draggedCardGroupIndex;
-    private readonly List<RectTransform> playAreaSlots = new List<RectTransform>();
+
+    private ThirteenGameController controller;
+    private RectTransform holderRect;
     private Camera uiCamera;
+    private Card draggedCard;
+    private int previewIndex = -1;
+    private int draggedCardGroupIndex;
     private int handStartSlotIndex;
-    private ThirteenMatchState matchState;
+    private bool initialized;
+    private bool turnActive;
+
+    public RectTransform PlayArea => playArea;
 
     private void Awake()
     {
         holderRect = GetComponent<RectTransform>();
-        layoutGroup = GetComponent<HorizontalLayoutGroup>();
 
         if (dragLayer == null)
         {
@@ -62,20 +57,19 @@ public class HorizontalCardHolder : MonoBehaviour
             }
         }
 
-        if (playArea == null)
+        if (playArea == null && holderRect.parent != null)
         {
-            Transform playAreaTransform = holderRect.parent != null
-                ? holderRect.parent.Find("PlayArea")
-                : null;
-
+            Transform playAreaTransform = holderRect.parent.Find("PlayArea");
             if (playAreaTransform != null)
                 playArea = playAreaTransform as RectTransform;
         }
 
-        matchState = new ThirteenMatchState(startingSeat);
-        Debug.Log($"[Thirteen] Match initialized. Starting seat: {startingSeat}");
+        InitializeHand(forceRebuild: false);
+    }
 
-        InitializeHand();
+    public void SetController(ThirteenGameController gameController)
+    {
+        controller = gameController;
     }
 
     public void SetHand(IReadOnlyList<Card.CardData> hand, IReadOnlyDictionary<string, Sprite> spriteLookup)
@@ -83,26 +77,170 @@ public class HorizontalCardHolder : MonoBehaviour
         if (hand == null || spriteLookup == null)
             return;
 
-        InitializeHand();
+        InitializeHand(forceRebuild: cards.Count != slotCount);
         CacheSlotsAndCards();
 
         List<Card.CardData> sortedHand = ThirteenRules.SortCards(hand);
-
         int count = Mathf.Min(sortedHand.Count, cards.Count);
-        for (int i = 0; i < count; i++)
+
+        for (int i = 0; i < cards.Count; i++)
         {
+            Card card = cards[i];
+            if (card == null)
+                continue;
+
+            bool hasData = i < count;
+            card.gameObject.SetActive(hasData);
+            if (!hasData)
+                continue;
+
             Card.CardData data = sortedHand[i];
             spriteLookup.TryGetValue(data.SpriteKey, out Sprite sprite);
-            cards[i].SetCardData(data, sprite);
-            cards[i].SetSelected(false, false);
-            cards[i].SnapToLocal(Vector2.zero);
-            cards[i].SnapScale(Vector3.one);
+            card.SetCardData(data, sprite);
+            card.SetSelected(false, false);
+            card.SetReturning(false);
+            card.SnapToLocal(Vector2.zero);
+            card.SnapScale(Vector3.one);
+            card.SetInteractionEnabled(turnActive);
         }
+
+        handStartSlotIndex = GetCenteredStartIndex(count);
+        ArrangeCards(false);
+    }
+
+    public List<Card.CardData> GetSelectedCards()
+    {
+        return cards
+            .Where(card => card != null && card.gameObject.activeSelf && card.IsSelected)
+            .Select(card => card.Data)
+            .ToList();
+    }
+
+    public void RemoveCards(List<Card.CardData> cardsToRemove)
+    {
+        if (cardsToRemove == null || cardsToRemove.Count == 0)
+            return;
+
+        List<Card> cardsToDestroy = FindCardsInHand(cardsToRemove);
+        foreach (Card card in cardsToDestroy)
+        {
+            cards.Remove(card);
+            if (card != null)
+                Destroy(card.gameObject);
+        }
+
+        handStartSlotIndex = GetCenteredStartIndex(cards.Count);
+        ArrangeCards(false);
+    }
+
+    public void SetTurnActive(bool active)
+    {
+        turnActive = active;
+
+        foreach (Card card in cards)
+        {
+            if (card == null || !card.gameObject.activeSelf)
+                continue;
+
+            card.SetInteractionEnabled(active);
+        }
+    }
+
+    public void ClearPlayArea()
+    {
+        if (playArea == null)
+            return;
+
+        for (int i = playArea.childCount - 1; i >= 0; i--)
+            Destroy(playArea.GetChild(i).gameObject);
+    }
+
+    public void ClearSelection()
+    {
+        foreach (Card card in cards)
+        {
+            if (card == null || !card.gameObject.activeSelf)
+                continue;
+
+            card.SetSelected(false, true);
+        }
+    }
+
+    public void MoveCardsToPlayArea(IReadOnlyList<Card.CardData> cardsToPlay)
+    {
+        if (cardsToPlay == null || cardsToPlay.Count == 0)
+            return;
+
+        List<Card> matchingCards = FindCardsInHand(cardsToPlay);
+        CommitCardsToPlayArea(matchingCards);
+    }
+
+    public void CommitDraggedCardsToPlayArea(IReadOnlyList<Card> draggedCards)
+    {
+        if (draggedCards == null || draggedCards.Count == 0)
+            return;
+
+        CommitCardsToPlayArea(draggedCards.Where(card => card != null).ToList());
+    }
+
+    public void DisplayPlayedCards(IReadOnlyList<Card.CardData> playedCards, IReadOnlyDictionary<string, Sprite> spriteLookup)
+    {
+        ClearPlayArea();
+
+        if (playArea == null || playedCards == null || spriteLookup == null)
+            return;
+
+        List<Card.CardData> sortedCards = ThirteenRules.SortCards(playedCards);
+        List<RectTransform> targetSlots = CreatePlayAreaSlots(sortedCards.Count);
+
+        for (int i = 0; i < sortedCards.Count && i < targetSlots.Count; i++)
+        {
+            Card.CardData data = sortedCards[i];
+            GameObject cardObject = Instantiate(cardPrefab, targetSlots[i]);
+            cardObject.name = $"Played_{data.SpriteKey}";
+
+            RectTransform rect = cardObject.GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.anchoredPosition = Vector2.zero;
+                rect.localScale = Vector3.one;
+            }
+
+            Card card = cardObject.GetComponent<Card>();
+            if (card != null)
+            {
+                spriteLookup.TryGetValue(data.SpriteKey, out Sprite sprite);
+                card.SetCardData(data, sprite);
+                card.SetSelected(false, false);
+                card.SetInteractionEnabled(false);
+                card.enabled = false;
+            }
+
+            Button button = cardObject.GetComponent<Button>();
+            if (button != null)
+                button.interactable = false;
+        }
+    }
+
+    private void Update()
+    {
+        if (draggedCard == null || previewIndex < 0 || slots.Count == 0)
+            return;
+
+        draggedCard.UpdateShadow(shadowOffset);
+        UpdateGroupedCardPositions();
+
+        int targetIndex = GetGroupStartIndex(GetPreviewIndex(draggedCard.transform.position.x));
+        if (targetIndex == previewIndex)
+            return;
+
+        previewIndex = targetIndex;
+        ArrangeCards(true);
     }
 
     private void OnBeginDrag(Card card)
     {
-        if (card == null)
+        if (card == null || !turnActive)
             return;
 
         draggedCard = card;
@@ -125,13 +263,9 @@ public class HorizontalCardHolder : MonoBehaviour
             dragCard.ShowShadow(dragLayer, shadowOffset);
 
             if (dragCard == draggedCard)
-            {
                 dragCard.TweenScale(Vector3.one * dragScale, shiftDuration, dragScaleEase);
-            }
             else
-            {
                 UpdateGroupedCardPosition(dragCard, i);
-            }
         }
 
         UpdateDragGroupLayering();
@@ -147,6 +281,7 @@ public class HorizontalCardHolder : MonoBehaviour
         {
             draggedCard = null;
             previewIndex = -1;
+            activeDragGroup.Clear();
             return;
         }
 
@@ -170,7 +305,6 @@ public class HorizontalCardHolder : MonoBehaviour
 
             dragCard.KillTweens();
             dragCard.TweenScale(Vector3.one, returnDuration, returnEase);
-
             dragCard.RectTransform.DOMove(targetWorldPosition, returnDuration)
                 .SetEase(returnEase)
                 .OnComplete(() =>
@@ -197,23 +331,43 @@ public class HorizontalCardHolder : MonoBehaviour
         previewIndex = -1;
     }
 
-    private void Update()
+    private void OnCardClicked(Card card)
     {
-        if (draggedCard == null)
+        if (card == null || draggedCard != null || !turnActive)
             return;
 
-        if (previewIndex < 0 || slots.Count == 0)
+        card.SetSelected(!card.IsSelected, true);
+    }
+
+    private void InitializeHand(bool forceRebuild)
+    {
+        if (initialized && !forceRebuild)
             return;
 
-        draggedCard.UpdateShadow(shadowOffset);
-        UpdateGroupedCardPositions();
+        for (int i = transform.childCount - 1; i >= 0; i--)
+            Destroy(transform.GetChild(i).gameObject);
 
-        int targetIndex = GetGroupStartIndex(GetPreviewIndex(draggedCard.transform.position.x));
-        if (targetIndex == previewIndex)
-            return;
+        slots.Clear();
+        cards.Clear();
 
-        previewIndex = targetIndex;
-        ArrangeCards(true);
+        for (int i = 0; i < slotCount; i++)
+        {
+            GameObject slot = Instantiate(slotPrefab, transform);
+            slot.name = $"Slot_{i}";
+
+            GameObject cardObject = Instantiate(cardPrefab, slot.transform);
+            cardObject.name = $"Card_{i}";
+
+            RectTransform rect = cardObject.GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.anchoredPosition = Vector2.zero;
+                rect.localScale = Vector3.one;
+            }
+        }
+
+        initialized = true;
+        CacheSlotsAndCards();
     }
 
     private void CacheSlotsAndCards()
@@ -224,14 +378,14 @@ public class HorizontalCardHolder : MonoBehaviour
         slots.Clear();
         cards.Clear();
 
-        foreach (RectTransform slot in transform.Cast<Transform>().Select(t => t as RectTransform))
+        foreach (RectTransform slot in transform.Cast<Transform>().Select(child => child as RectTransform))
         {
             if (slot == null)
                 continue;
 
             slots.Add(slot);
 
-            Card card = slot.GetComponentInChildren<Card>();
+            Card card = slot.GetComponentInChildren<Card>(true);
             if (card == null)
                 continue;
 
@@ -245,32 +399,141 @@ public class HorizontalCardHolder : MonoBehaviour
             card.SetSelected(false, false);
             card.SnapToLocal(Vector2.zero);
             card.SnapScale(Vector3.one);
+            card.SetInteractionEnabled(turnActive);
         }
     }
 
-    private void InitializeHand()
+    private bool TryPlayDragGroup()
     {
-        if (initialized)
+        if (playArea == null || draggedCard == null || activeDragGroup.Count == 0 || controller == null)
+            return false;
+
+        Vector2 screenPoint = draggedCard.GetLastPointerScreenPosition();
+        if (!RectTransformUtility.RectangleContainsScreenPoint(playArea, screenPoint, uiCamera))
+            return false;
+
+        List<Card.CardData> selectedCards = activeDragGroup
+            .Where(card => card != null)
+            .Select(card => card.Data)
+            .ToList();
+
+        return controller.TryPlayLocalCards(selectedCards, activeDragGroup);
+    }
+
+    private void CommitCardsToPlayArea(IReadOnlyList<Card> cardsToPlay)
+    {
+        if (cardsToPlay == null || cardsToPlay.Count == 0 || playArea == null)
             return;
 
-        for (int i = transform.childCount - 1; i >= 0; i--)
-            Destroy(transform.GetChild(i).gameObject);
+        List<Card> validCards = cardsToPlay.Where(card => card != null).ToList();
+        if (validCards.Count == 0)
+            return;
 
-        for (int i = 0; i < slotCount; i++)
+        foreach (Card card in validCards)
         {
-            GameObject slot = Instantiate(slotPrefab, transform);
-            slot.name = "Slot_" + i;
-
-            GameObject cardObj = Instantiate(cardPrefab, slot.transform);
-            cardObj.name = "Card_" + i;
-
-            RectTransform rect = cardObj.GetComponent<RectTransform>();
-            rect.anchoredPosition = Vector2.zero;
-            rect.localScale = Vector3.one;
+            cards.Remove(card);
+            card.SetReturning(true);
+            card.SetSelected(false, false);
+            card.SetInteractionEnabled(false);
+            card.HideShadow();
         }
 
-        initialized = true;
-        CacheSlotsAndCards();
+        List<RectTransform> targetSlots = CreatePlayAreaSlots(validCards.Count);
+        int completedCount = 0;
+        int expectedCount = validCards.Count;
+
+        for (int i = 0; i < validCards.Count && i < targetSlots.Count; i++)
+        {
+            Card card = validCards[i];
+            RectTransform targetSlot = targetSlots[i];
+            Vector3 targetWorldPosition = targetSlot.TransformPoint(Vector2.zero);
+
+            card.KillTweens();
+            card.TweenScale(Vector3.one, playAreaDuration, playAreaEase);
+            card.RectTransform.DOMove(targetWorldPosition, playAreaDuration)
+                .SetEase(playAreaEase)
+                .OnComplete(() =>
+                {
+                    if (card == null || targetSlot == null)
+                        return;
+
+                    card.transform.SetParent(targetSlot, false);
+                    card.SnapToLocal(Vector2.zero);
+                    card.SnapScale(Vector3.one);
+                    card.SetReturning(false);
+
+                    completedCount++;
+                    if (completedCount >= expectedCount)
+                    {
+                        handStartSlotIndex = GetCenteredStartIndex(cards.Count);
+                        LayoutRebuilder.ForceRebuildLayoutImmediate(playArea);
+                        ArrangeCards(true);
+                    }
+                });
+        }
+    }
+
+    private List<Card> FindCardsInHand(IReadOnlyList<Card.CardData> cardsToMatch)
+    {
+        List<Card> matches = new List<Card>(cardsToMatch.Count);
+        List<Card> remainingCards = cards
+            .Where(card => card != null && card.gameObject.activeSelf)
+            .ToList();
+
+        foreach (Card.CardData targetCard in cardsToMatch)
+        {
+            Card match = remainingCards.FirstOrDefault(card => card.Data.Equals(targetCard));
+            if (match == null)
+                continue;
+
+            matches.Add(match);
+            remainingCards.Remove(match);
+        }
+
+        return matches;
+    }
+
+    private List<Card> GetDragGroup(Card leadCard)
+    {
+        if (!leadCard.IsSelected)
+            return new List<Card> { leadCard };
+
+        return cards
+            .Where(card => card != null && card.gameObject.activeSelf && card.IsSelected)
+            .OrderBy(GetCardIndex)
+            .ToList();
+    }
+
+    private void ArrangeCards(bool animate)
+    {
+        if (slots.Count == 0)
+            return;
+
+        int cardIndex = 0;
+        int groupCount = activeDragGroup.Count;
+        int activePreviewIndex = draggedCard != null ? previewIndex : -1;
+
+        for (int slotIndex = handStartSlotIndex; slotIndex < slots.Count; slotIndex++)
+        {
+            if (draggedCard != null && slotIndex >= activePreviewIndex && slotIndex < activePreviewIndex + groupCount)
+                continue;
+
+            if (cardIndex >= cards.Count)
+                break;
+
+            Card card = cards[cardIndex++];
+            if (card == null)
+                continue;
+
+            RectTransform slot = slots[slotIndex];
+            card.KillTweens();
+            card.transform.SetParent(slot, true);
+
+            if (animate)
+                card.TweenToLocal(Vector2.zero, shiftDuration, shiftEase);
+            else
+                card.SnapToLocal(Vector2.zero);
+        }
     }
 
     private int GetCardIndex(Card card)
@@ -300,58 +563,6 @@ public class HorizontalCardHolder : MonoBehaviour
         }
 
         return slots.Count - 1;
-    }
-
-    private void ArrangeCards(bool animate)
-    {
-        if (slots.Count == 0)
-            return;
-
-        int cardIndex = 0;
-        int groupCount = activeDragGroup.Count;
-        int startSlotIndex = handStartSlotIndex;
-        int activePreviewIndex = draggedCard != null ? previewIndex : -1;
-
-        for (int slotIndex = startSlotIndex; slotIndex < slots.Count; slotIndex++)
-        {
-            if (draggedCard != null && slotIndex >= activePreviewIndex && slotIndex < activePreviewIndex + groupCount)
-                continue;
-
-            if (cardIndex >= cards.Count)
-                break;
-
-            Card card = cards[cardIndex++];
-            if (card == null)
-                continue;
-
-            RectTransform slot = slots[slotIndex];
-            card.KillTweens();
-            card.transform.SetParent(slot, true);
-
-            if (animate)
-                card.TweenToLocal(Vector2.zero, shiftDuration, shiftEase);
-            else
-                card.SnapToLocal(Vector2.zero);
-        }
-    }
-
-    private void OnCardClicked(Card card)
-    {
-        if (card == null || draggedCard != null)
-            return;
-
-        card.SetSelected(!card.IsSelected, true);
-    }
-
-    private List<Card> GetDragGroup(Card leadCard)
-    {
-        if (!leadCard.IsSelected)
-            return new List<Card> { leadCard };
-
-        return cards
-            .Where(card => card != null && card.IsSelected)
-            .OrderBy(GetCardIndex)
-            .ToList();
     }
 
     private int GetGroupStartIndex(int leadIndex)
@@ -408,91 +619,6 @@ public class HorizontalCardHolder : MonoBehaviour
         }
     }
 
-    private bool TryPlayDragGroup()
-    {
-        if (playArea == null || draggedCard == null || activeDragGroup.Count == 0)
-            return false;
-
-        Vector2 screenPoint = draggedCard.GetLastPointerScreenPosition();
-        if (!RectTransformUtility.RectangleContainsScreenPoint(playArea, screenPoint, uiCamera))
-            return false;
-
-        if (!CanPlayDraggedCards())
-            return false;
-
-        foreach (Card dragCard in activeDragGroup)
-        {
-            dragCard.SetReturning(true);
-            dragCard.SetSelected(false, false);
-            dragCard.SetInteractionEnabled(false);
-            dragCard.HideShadow();
-        }
-
-        List<RectTransform> targetSlots = CreatePlayAreaSlots(activeDragGroup.Count);
-        int completedCount = 0;
-        int expectedCount = activeDragGroup.Count;
-
-        for (int i = 0; i < activeDragGroup.Count; i++)
-        {
-            Card dragCard = activeDragGroup[i];
-            RectTransform targetSlot = targetSlots[i];
-            Vector3 targetWorldPosition = targetSlot.TransformPoint(Vector2.zero);
-
-            dragCard.KillTweens();
-            dragCard.TweenScale(Vector3.one, playAreaDuration, playAreaEase);
-
-            dragCard.RectTransform.DOMove(targetWorldPosition, playAreaDuration)
-                .SetEase(playAreaEase)
-                .OnComplete(() =>
-                {
-                    if (dragCard == null || targetSlot == null)
-                        return;
-
-                    dragCard.transform.SetParent(targetSlot, false);
-                    dragCard.SnapToLocal(Vector2.zero);
-                    dragCard.SnapScale(Vector3.one);
-                    dragCard.SetReturning(false);
-
-                    completedCount++;
-                    if (completedCount >= expectedCount)
-                    {
-                        handStartSlotIndex = GetCenteredStartIndex(cards.Count);
-                        if (playArea != null)
-                            LayoutRebuilder.ForceRebuildLayoutImmediate(playArea);
-
-                        activeDragGroup.Clear();
-                        ArrangeCards(true);
-                    }
-                });
-        }
-
-        return true;
-    }
-
-    private bool CanPlayDraggedCards()
-    {
-        List<Card.CardData> selectedCards = activeDragGroup
-            .Where(card => card != null)
-            .Select(card => card.Data)
-            .ToList();
-
-        if (selectedCards.Count == 0)
-            return false;
-
-        if (matchState == null)
-            matchState = new ThirteenMatchState(startingSeat);
-
-        ThirteenMatchState.PlayResult result = matchState.TryPlay(localPlayerSeat, selectedCards);
-        if (!result.Success)
-        {
-            Debug.Log($"[Thirteen] Rejected play: {result.Reason}");
-            return false;
-        }
-
-        Debug.Log($"[Thirteen] Confirmed play: {ThirteenRules.Describe(result.Hand)}");
-        return true;
-    }
-
     private List<RectTransform> CreatePlayAreaSlots(int count)
     {
         List<RectTransform> createdSlots = new List<RectTransform>(count);
@@ -502,9 +628,8 @@ public class HorizontalCardHolder : MonoBehaviour
         for (int i = 0; i < count; i++)
         {
             GameObject slotObject = Instantiate(slotPrefab, playArea);
-            slotObject.name = "PlayedSlot_" + playAreaSlots.Count;
+            slotObject.name = $"PlayedSlot_{i}";
             RectTransform slotRect = slotObject.GetComponent<RectTransform>();
-            playAreaSlots.Add(slotRect);
             createdSlots.Add(slotRect);
         }
 

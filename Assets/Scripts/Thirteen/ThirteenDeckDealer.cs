@@ -39,6 +39,26 @@ public class ThirteenDeckDealer : MonoBehaviour
 
     private readonly Dictionary<string, Sprite> spriteLookup = new Dictionary<string, Sprite>();
 
+    public IReadOnlyDictionary<string, Sprite> SpriteLookup => spriteLookup;
+    public bool HasDealtHands => playerHand.Count == 13 && opponentHandA.Count == 13 && opponentHandB.Count == 13 && opponentHandC.Count == 13;
+    public GameObject CardBackPrefab => cardBackPrefab;
+
+    public RectTransform GetContainerForSeat(int seat)
+    {
+        return seat switch
+        {
+            1 => player2Container,
+            2 => player3Container,
+            3 => player4Container,
+            _ => null
+        };
+    }
+
+    public bool IsSidePlayer(int seat)
+    {
+        return seat == 1 || seat == 3;
+    }
+
     private void Awake()
     {
         AutoAssignSceneReferences();
@@ -66,15 +86,32 @@ public class ThirteenDeckDealer : MonoBehaviour
         if (playerHandHolder != null)
             playerHandHolder.SetHand(playerHand, spriteLookup);
 
-        PopulateOpponentHand(player2Container, opponentHandA.Count, true);
-        PopulateOpponentHand(player3Container, opponentHandB.Count, false);
-        PopulateOpponentHand(player4Container, opponentHandC.Count, true);
+        RefreshOpponentVisuals(opponentHandA.Count, opponentHandB.Count, opponentHandC.Count);
     }
 
     public IReadOnlyList<Card.CardData> GetPlayerHand() => playerHand;
     public IReadOnlyList<Card.CardData> GetOpponentHandA() => opponentHandA;
     public IReadOnlyList<Card.CardData> GetOpponentHandB() => opponentHandB;
     public IReadOnlyList<Card.CardData> GetOpponentHandC() => opponentHandC;
+
+    public IReadOnlyList<Card.CardData> GetHandForSeat(int seat)
+    {
+        return seat switch
+        {
+            0 => playerHand,
+            1 => opponentHandA,
+            2 => opponentHandB,
+            3 => opponentHandC,
+            _ => playerHand
+        };
+    }
+
+    public void RefreshOpponentVisuals(int opponentACount, int opponentBCount, int opponentCCount)
+    {
+        PopulateOpponentHand(player2Container, Mathf.Max(0, opponentACount), true);
+        PopulateOpponentHand(player3Container, Mathf.Max(0, opponentBCount), false);
+        PopulateOpponentHand(player4Container, Mathf.Max(0, opponentCCount), true);
+    }
 
     public static string GetSuitSpriteName(Card.Suit suit)
     {
