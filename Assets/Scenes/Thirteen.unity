@@ -387,6 +387,20 @@ MonoBehaviour:
   slotPrefab: {fileID: 1774667152991042056, guid: cb78907314302e04db37a1d9ddcbf9d5, type: 3}
   cardPrefab: {fileID: 1685059642567027552, guid: 34610b1371b3d1445a8e9cb020a644dd, type: 3}
   slotCount: 13
+  dragLayer: {fileID: 0}
+  shiftDuration: 0.18
+  returnDuration: 0.2
+  dragScale: 1.15
+  shadowOffset: {x: 0, y: -30}
+  shadowReturnScale: 0.4
+  shiftEase: 9
+  returnEase: 9
+  dragScaleEase: 6
+  handMaxTiltX: 30
+  handMaxTiltZ: 30
+  handVerticalTiltFactor: 1
+  handHorizontalTiltFactor: 1
+  handTiltReturnSpeed: 30
 --- !u!114 &1763454360
 MonoBehaviour:
   m_ObjectHideFlags: 0

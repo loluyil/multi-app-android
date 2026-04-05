@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
+using DG.Tweening;
 
 public class HorizontalCardHolder : MonoBehaviour
 {
@@ -10,10 +12,38 @@ public class HorizontalCardHolder : MonoBehaviour
 
     [Header("Setup")]
     [SerializeField] private int slotCount = 13;
+    [SerializeField] private RectTransform dragLayer;
 
-    private Card selectedCard;
-    private List<Card> cards = new List<Card>();
-    private bool isSwapping;
+    [Header("Tweening")]
+    [SerializeField] private float shiftDuration = 0.18f;
+    [SerializeField] private float returnDuration = 0.2f;
+    [SerializeField] private float dragScale = 1.08f;
+    [SerializeField] private Vector2 shadowOffset = new Vector2(0f, -18f);
+    [SerializeField] private float shadowReturnScale = 0.9f;
+    [SerializeField] private Ease shiftEase = Ease.OutCubic;
+    [SerializeField] private Ease returnEase = Ease.OutCubic;
+    [SerializeField] private Ease dragScaleEase = Ease.OutQuad;
+
+    private Card draggedCard;
+    private Card selectedHandCard;
+    private RectTransform holderRect;
+    private HorizontalLayoutGroup layoutGroup;
+    private readonly List<Card> cards = new List<Card>();
+    private readonly List<RectTransform> slots = new List<RectTransform>();
+    private int previewIndex = -1;
+
+    private void Awake()
+    {
+        holderRect = GetComponent<RectTransform>();
+        layoutGroup = GetComponent<HorizontalLayoutGroup>();
+
+        if (dragLayer == null)
+        {
+            Canvas canvas = GetComponentInParent<Canvas>();
+            if (canvas != null)
+                dragLayer = canvas.transform as RectTransform;
+        }
+    }
 
     private void Start()
     {
@@ -35,82 +65,188 @@ public class HorizontalCardHolder : MonoBehaviour
             rect.localScale = Vector3.one;
         }
 
-        // GET CARDS
-        cards = GetComponentsInChildren<Card>().ToList();
-
-        // HOOK EVENTS
-        foreach (Card card in cards)
-        {
-            card.BeginDragEvent.AddListener(OnBeginDrag);
-            card.EndDragEvent.AddListener(OnEndDrag);
-        }
+        CacheSlotsAndCards();
     }
 
     private void OnBeginDrag(Card card)
     {
-        selectedCard = card;
+        if (card == null)
+            return;
+
+        draggedCard = card;
+        previewIndex = GetCardIndex(card);
+
+        if (previewIndex < 0)
+            return;
+
+        cards.Remove(card);
+
+        card.KillTweens();
+        card.transform.SetParent(dragLayer, true);
+        card.ShowShadow(dragLayer, shadowOffset);
+        card.transform.SetAsLastSibling();
+        card.PlaceShadowBehindCard();
+        card.TweenScale(Vector3.one * dragScale, shiftDuration, dragScaleEase);
+
+        ArrangeCards(false);
     }
 
     private void OnEndDrag(Card card)
     {
-        selectedCard = null;
+        if (card == null || previewIndex < 0)
+            return;
+
+        card.KillTweens();
+        card.TweenScale(Vector3.one, returnDuration, returnEase);
+        card.TweenShadowScale(shadowReturnScale, returnDuration, returnEase);
+
+        cards.Insert(previewIndex, card);
+        RectTransform targetSlot = slots[previewIndex];
+
+        card.RectTransform.DOMove(targetSlot.position, returnDuration)
+            .SetEase(returnEase)
+            .OnUpdate(() => card.UpdateShadow(shadowOffset))
+            .OnComplete(() =>
+            {
+                if (card == null || targetSlot == null)
+                    return;
+
+                card.transform.SetParent(targetSlot, false);
+                card.SnapToLocal(Vector2.zero);
+                card.SnapScale(Vector3.one);
+                ArrangeCards(false);
+                card.HideShadow();
+            });
+
+        draggedCard = null;
+        previewIndex = -1;
     }
 
     private void Update()
     {
-        if (selectedCard == null || isSwapping)
+        if (draggedCard == null)
             return;
 
-        if (selectedCard.transform.parent == null)
+        if (previewIndex < 0 || slots.Count == 0)
             return;
 
-        for (int i = 0; i < cards.Count; i++)
+        draggedCard.UpdateShadow(shadowOffset);
+
+        int targetIndex = GetPreviewIndex(draggedCard.transform.position.x);
+        if (targetIndex == previewIndex)
+            return;
+
+        previewIndex = targetIndex;
+        ArrangeCards(true);
+    }
+
+    private void CacheSlotsAndCards()
+    {
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(holderRect);
+
+        slots.Clear();
+        cards.Clear();
+
+        foreach (RectTransform slot in transform.Cast<Transform>().Select(t => t as RectTransform))
         {
-            Card other = cards[i];
-
-            if (other == null || other == selectedCard)
+            if (slot == null)
                 continue;
 
-            if (other.transform.parent == null)
+            slots.Add(slot);
+
+            Card card = slot.GetComponentInChildren<Card>();
+            if (card == null)
                 continue;
 
-            if (selectedCard.transform.position.x > other.transform.position.x &&
-                selectedCard.ParentIndex() < other.ParentIndex())
-            {
-                Swap(other);
-                break;
-            }
-
-            if (selectedCard.transform.position.x < other.transform.position.x &&
-                selectedCard.ParentIndex() > other.ParentIndex())
-            {
-                Swap(other);
-                break;
-            }
+            cards.Add(card);
+            card.BeginDragEvent.RemoveListener(OnBeginDrag);
+            card.EndDragEvent.RemoveListener(OnEndDrag);
+            card.ClickedEvent.RemoveListener(OnCardClicked);
+            card.BeginDragEvent.AddListener(OnBeginDrag);
+            card.EndDragEvent.AddListener(OnEndDrag);
+            card.ClickedEvent.AddListener(OnCardClicked);
+            card.SetSelected(false, false);
+            card.SnapToLocal(Vector2.zero);
+            card.SnapScale(Vector3.one);
         }
     }
 
-    private void Swap(Card other)
+    private int GetCardIndex(Card card)
     {
-        if (selectedCard == null || other == null)
+        for (int i = 0; i < slots.Count; i++)
+        {
+            if (slots[i] != null && card.transform.parent == slots[i])
+                return i;
+        }
+
+        return -1;
+    }
+
+    private int GetPreviewIndex(float draggedX)
+    {
+        if (slots.Count == 0)
+            return -1;
+
+        if (slots.Count == 1)
+            return 0;
+
+        for (int i = 0; i < slots.Count - 1; i++)
+        {
+            float midpoint = (slots[i].position.x + slots[i + 1].position.x) * 0.5f;
+            if (draggedX < midpoint)
+                return i;
+        }
+
+        return slots.Count - 1;
+    }
+
+    private void ArrangeCards(bool animate)
+    {
+        if (slots.Count == 0)
             return;
 
-        if (selectedCard.transform.parent == null || other.transform.parent == null)
+        int cardIndex = 0;
+
+        for (int slotIndex = 0; slotIndex < slots.Count; slotIndex++)
+        {
+            if (slotIndex == previewIndex && draggedCard != null)
+                continue;
+
+            if (cardIndex >= cards.Count)
+                break;
+
+            Card card = cards[cardIndex++];
+            if (card == null)
+                continue;
+
+            RectTransform slot = slots[slotIndex];
+            card.KillTweens();
+            card.transform.SetParent(slot, true);
+
+            if (animate)
+                card.TweenToLocal(Vector2.zero, shiftDuration, shiftEase);
+            else
+                card.SnapToLocal(Vector2.zero);
+        }
+    }
+
+    private void OnCardClicked(Card card)
+    {
+        if (card == null || draggedCard != null)
             return;
 
-        isSwapping = true;
+        if (selectedHandCard == card)
+        {
+            selectedHandCard.SetSelected(false, true);
+            selectedHandCard = null;
+            return;
+        }
 
-        Transform a = selectedCard.transform.parent;
-        Transform b = other.transform.parent;
+        if (selectedHandCard != null)
+            selectedHandCard.SetSelected(false, true);
 
-        other.transform.SetParent(a, false);
-        other.transform.localPosition = Vector3.zero;
-
-        selectedCard.transform.SetParent(b, false);
-        selectedCard.transform.localPosition = Vector3.zero;
-
-        cards = GetComponentsInChildren<Card>().ToList();
-
-        isSwapping = false;
+        selectedHandCard = card;
+        selectedHandCard.SetSelected(true, true);
     }
 }
