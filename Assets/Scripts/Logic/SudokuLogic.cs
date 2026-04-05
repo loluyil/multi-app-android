@@ -322,7 +322,11 @@ public class SudokuLogic : MonoBehaviour
 
     private void OnClueClicked(SudokuClue clue)
     {
-        if (clue == null) return;
+        if (clue == null)
+            return;
+
+        // Clues are not editable, so don't keep a previous editable cell armed.
+        selectedCell = null;
         HighlightBoard(clue.gridX, clue.gridY, clue.number);
     }
 
@@ -1004,6 +1008,7 @@ public class SudokuLogic : MonoBehaviour
         clue.clueText = clueObject.GetComponentInChildren<TextMeshProUGUI>();
         clue.clueText.text = sudokuBoard[x, y].ToString();
         clue.clueText.color = clueNumberColor;
+        clue.clueText.raycastTarget = false;
         clue.backgroundImage = clueObject.GetComponentInChildren<Image>();
         clue.SetDefaultBackgroundColor(Color.clear);
 
@@ -1046,6 +1051,7 @@ public class SudokuLogic : MonoBehaviour
         cell.gridY = y;
         cell.cellText = cellObject.GetComponentInChildren<TextMeshProUGUI>();
         cell.cellText.text = "";
+        cell.cellText.raycastTarget = false;
         cell.backgroundImage = cellObject.GetComponentInChildren<Image>();
         cell.SetDefaultBackgroundColor(Color.clear);
 
@@ -1084,6 +1090,7 @@ public class SudokuLogic : MonoBehaviour
                     pencilText.fontSizeMin = 15;
                     pencilText.fontSizeMax = 100;
                     pencilText.alignment = TextAlignmentOptions.Center;
+                    pencilText.raycastTarget = false;
 
                     cell.pencilTexts[num] = pencilText;
                     spawnedBoardObjects.Add(pencilObj);
