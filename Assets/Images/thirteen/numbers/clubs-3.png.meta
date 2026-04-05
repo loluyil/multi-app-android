@@ -1,31 +1,28 @@
 fileFormatVersion: 2
-guid: 9660d458bb267c845867d760dd4ebf27
+guid: 976e60e09fd97ce49884d605a56863e0
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -8966103351282879131
-    second: clubs-3_0
+      213: -4385027863452513888
+    second: clubs-2_0
   - first:
-      213: -2206958681167107561
-    second: clubs-3_1
+      213: -2415793364531325573
+    second: clubs-2_1
   - first:
-      213: -1914151635391941092
-    second: clubs-3_2
+      213: 4029030233856856995
+    second: clubs-2_2
   - first:
-      213: -8091490879422527456
-    second: clubs-3_3
+      213: 1721781957338371136
+    second: clubs-2_3
   - first:
-      213: 3191660952543511871
-    second: clubs-3_4
+      213: -3850263254657735734
+    second: clubs-2_4
   - first:
-      213: -5106427438988888688
-    second: clubs-3_5
+      213: 3873597098644022595
+    second: clubs-2_5
   - first:
-      213: -4991720856829970769
-    second: clubs-3_6
-  - first:
-      213: -6854007382849774218
-    second: clubs-3_7
+      213: 6532905896803874891
+    second: clubs-2_6
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -147,7 +144,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: clubs-3_0
+      name: clubs-2_0
       rect:
         serializedVersion: 2
         x: 5
@@ -162,14 +159,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 5653857a180029380800000000000000
-      internalID: -8966103351282879131
+      spriteID: 0a909bc14604523c0800000000000000
+      internalID: -4385027863452513888
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-3_1
+      name: clubs-2_1
       rect:
         serializedVersion: 2
         x: 5
@@ -184,17 +181,17 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 71ae11fb5ce4f51e0800000000000000
-      internalID: -2206958681167107561
+      spriteID: b755d500cb0697ed0800000000000000
+      internalID: -2415793364531325573
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-3_2
+      name: clubs-2_2
       rect:
         serializedVersion: 2
-        x: 18
+        x: 29
         y: 70
         width: 13
         height: 13
@@ -206,18 +203,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: c16fa3eaa319f65e0800000000000000
-      internalID: -1914151635391941092
+      spriteID: 3a3d856a6adf9e730800000000000000
+      internalID: 4029030233856856995
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-3_3
+      name: clubs-2_3
       rect:
         serializedVersion: 2
-        x: 40
-        y: 70
+        x: 29
+        y: 41
         width: 13
         height: 13
       alignment: 0
@@ -228,17 +225,17 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 02805bc6aef35bf80800000000000000
-      internalID: -8091490879422527456
+      spriteID: 04494db519ff4e710800000000000000
+      internalID: 1721781957338371136
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-3_4
+      name: clubs-2_4
       rect:
         serializedVersion: 2
-        x: 18
+        x: 29
         y: 12
         width: 13
         height: 13
@@ -250,36 +247,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: f3547d7e9be0b4c20800000000000000
-      internalID: 3191660952543511871
+      spriteID: ac3e26e28fd119ac0800000000000000
+      internalID: -3850263254657735734
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-3_5
-      rect:
-        serializedVersion: 2
-        x: 40
-        y: 12
-        width: 13
-        height: 13
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 09572cb9c435229b0800000000000000
-      internalID: -5106427438988888688
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: clubs-3_6
+      name: clubs-2_5
       rect:
         serializedVersion: 2
         x: 57
@@ -294,14 +269,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: fa6bdb6f358d9bab0800000000000000
-      internalID: -4991720856829970769
+      spriteID: 34529abb908c1c530800000000000000
+      internalID: 3873597098644022595
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: clubs-3_7
+      name: clubs-2_6
       rect:
         serializedVersion: 2
         x: 57
@@ -316,8 +291,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 67d9551799ca1e0a0800000000000000
-      internalID: -6854007382849774218
+      spriteID: b48bc02ec4b89aa50800000000000000
+      internalID: 6532905896803874891
       vertices: []
       indices: 
       edges: []
@@ -336,14 +311,13 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      clubs-3_0: -8966103351282879131
-      clubs-3_1: -2206958681167107561
-      clubs-3_2: -1914151635391941092
-      clubs-3_3: -8091490879422527456
-      clubs-3_4: 3191660952543511871
-      clubs-3_5: -5106427438988888688
-      clubs-3_6: -4991720856829970769
-      clubs-3_7: -6854007382849774218
+      clubs-2_0: -4385027863452513888
+      clubs-2_1: -2415793364531325573
+      clubs-2_2: 4029030233856856995
+      clubs-2_3: 1721781957338371136
+      clubs-2_4: -3850263254657735734
+      clubs-2_5: 3873597098644022595
+      clubs-2_6: 6532905896803874891
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

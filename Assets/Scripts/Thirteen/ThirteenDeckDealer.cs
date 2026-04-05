@@ -23,8 +23,6 @@ public class ThirteenDeckDealer : MonoBehaviour
     [SerializeField] private GameObject cardBackPrefab;
 
     [Header("Opponent Card Back Layout")]
-    [SerializeField] private Vector2 topCardBackSize = new Vector2(110f, 150f);
-    [SerializeField] private Vector2 sideCardBackSize = new Vector2(90f, 130f);
     [SerializeField] private float sideCardBackRotation = 90f;
 
     [Header("Art")]
@@ -115,30 +113,9 @@ public class ThirteenDeckDealer : MonoBehaviour
     private static List<Card.CardData> SortHand(List<Card.CardData> hand)
     {
         return hand
-            .OrderBy(card => GetRankSortValue(card.rank))
+            .OrderBy(card => ThirteenRules.GetRankStrength(card.rank))
             .ThenBy(card => (int)card.suit)
             .ToList();
-    }
-
-    private static int GetRankSortValue(int rank)
-    {
-        return rank switch
-        {
-            3 => 0,
-            4 => 1,
-            5 => 2,
-            6 => 3,
-            7 => 4,
-            8 => 5,
-            9 => 6,
-            10 => 7,
-            11 => 8,
-            12 => 9,
-            13 => 10,
-            1 => 11,
-            2 => 12,
-            _ => 99
-        };
     }
 
     private void RebuildSpriteLookup()
@@ -225,15 +202,6 @@ public class ThirteenDeckDealer : MonoBehaviour
         if (rectTransform == null)
             return;
 
-        LayoutElement layoutElement = rectTransform.GetComponent<LayoutElement>();
-        if (layoutElement == null)
-            layoutElement = rectTransform.gameObject.AddComponent<LayoutElement>();
-
-        Vector2 targetSize = isSidePlayer ? sideCardBackSize : topCardBackSize;
-        layoutElement.preferredWidth = targetSize.x;
-        layoutElement.preferredHeight = targetSize.y;
-        rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, targetSize.x);
-        rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, targetSize.y);
         rectTransform.localScale = Vector3.one;
         rectTransform.localRotation = Quaternion.Euler(0f, 0f, isSidePlayer ? sideCardBackRotation : 0f);
     }

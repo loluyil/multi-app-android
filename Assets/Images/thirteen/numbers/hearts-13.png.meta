@@ -1,22 +1,22 @@
 fileFormatVersion: 2
-guid: 281eea791aef9dd4e9a9c03ac2d095bd
+guid: ddf65523cb9ae004e8fb87ee97878f0e
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -489700549835606483
-    second: hearts-13_0
+      213: -3895469098427059046
+    second: hearts-12_0
   - first:
-      213: -1254466510374184274
-    second: hearts-13_1
+      213: 7036475968445718678
+    second: hearts-12_1
   - first:
-      213: -8748516955055392835
-    second: hearts-13_2
+      213: 6635362692951517821
+    second: hearts-12_2
   - first:
-      213: -8912479575903986441
-    second: hearts-13_3
+      213: -8765951007457881906
+    second: hearts-12_3
   - first:
-      213: -8607586199876621545
-    second: hearts-13_4
+      213: 189368373019892931
+    second: hearts-12_4
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -138,12 +138,12 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: hearts-13_0
+      name: hearts-12_0
       rect:
         serializedVersion: 2
         x: 5
         y: 79
-        width: 9
+        width: 10
         height: 10
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -153,14 +153,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: d263cb8c1fb3439f0800000000000000
-      internalID: -489700549835606483
+      spriteID: a947eba7e7380f9c0800000000000000
+      internalID: -3895469098427059046
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-13_1
+      name: hearts-12_1
       rect:
         serializedVersion: 2
         x: 5
@@ -175,20 +175,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: eaad582fa5d379ee0800000000000000
-      internalID: -1254466510374184274
+      spriteID: 690a7c9cc9596a160800000000000000
+      internalID: 7036475968445718678
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-13_2
+      name: hearts-12_2
       rect:
         serializedVersion: 2
-        x: 18
-        y: 31
-        width: 35
-        height: 32
+        x: 10
+        y: 5
+        width: 51
+        height: 85
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -197,14 +197,36 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: db7f0765e26079680800000000000000
-      internalID: -8748516955055392835
+      spriteID: d7a214da63b851c50800000000000000
+      internalID: 6635362692951517821
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-13_3
+      name: hearts-12_3
+      rect:
+        serializedVersion: 2
+        x: 56
+        y: 6
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ec0def1b006195680800000000000000
+      internalID: -8765951007457881906
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hearts-12_4
       rect:
         serializedVersion: 2
         x: 57
@@ -219,30 +241,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 7fc915acb03805480800000000000000
-      internalID: -8912479575903986441
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: hearts-13_4
-      rect:
-        serializedVersion: 2
-        x: 57
-        y: 6
-        width: 9
-        height: 10
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 71bacc6c4f5bb8880800000000000000
-      internalID: -8607586199876621545
+      spriteID: 3cc5b8d2885c0a200800000000000000
+      internalID: 189368373019892931
       vertices: []
       indices: 
       edges: []
@@ -261,11 +261,11 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      hearts-13_0: -489700549835606483
-      hearts-13_1: -1254466510374184274
-      hearts-13_2: -8748516955055392835
-      hearts-13_3: -8912479575903986441
-      hearts-13_4: -8607586199876621545
+      hearts-12_0: -3895469098427059046
+      hearts-12_1: 7036475968445718678
+      hearts-12_2: 6635362692951517821
+      hearts-12_3: -8765951007457881906
+      hearts-12_4: 189368373019892931
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

@@ -86,10 +86,12 @@ public class HorizontalCardHolder : MonoBehaviour
         InitializeHand();
         CacheSlotsAndCards();
 
-        int count = Mathf.Min(hand.Count, cards.Count);
+        List<Card.CardData> sortedHand = ThirteenRules.SortCards(hand);
+
+        int count = Mathf.Min(sortedHand.Count, cards.Count);
         for (int i = 0; i < count; i++)
         {
-            Card.CardData data = hand[i];
+            Card.CardData data = sortedHand[i];
             spriteLookup.TryGetValue(data.SpriteKey, out Sprite sprite);
             cards[i].SetCardData(data, sprite);
             cards[i].SetSelected(false, false);
@@ -149,7 +151,10 @@ public class HorizontalCardHolder : MonoBehaviour
         }
 
         foreach (Card dragCard in activeDragGroup)
+        {
             dragCard.SetReturning(true);
+            dragCard.HideShadow();
+        }
 
         int restoreIndex = Mathf.Clamp(previewIndex - handStartSlotIndex, 0, cards.Count);
         cards.InsertRange(restoreIndex, activeDragGroup);
@@ -165,15 +170,9 @@ public class HorizontalCardHolder : MonoBehaviour
 
             dragCard.KillTweens();
             dragCard.TweenScale(Vector3.one, returnDuration, returnEase);
-            if (dragCard == draggedCard)
-                dragCard.TweenShadowScale(shadowReturnScale, returnDuration, returnEase);
 
             dragCard.RectTransform.DOMove(targetWorldPosition, returnDuration)
                 .SetEase(returnEase)
-                .OnUpdate(() =>
-                {
-                    dragCard.UpdateShadow(shadowOffset);
-                })
                 .OnComplete(() =>
                 {
                     if (dragCard == null || targetSlot == null)
@@ -184,7 +183,6 @@ public class HorizontalCardHolder : MonoBehaviour
                     dragCard.SnapScale(Vector3.one);
                     dragCard.SetReturning(false);
                     dragCard.SetSelected(dragCard.IsSelected, false);
-                    dragCard.HideShadow();
 
                     completedCount++;
                     if (completedCount >= expectedCount)
@@ -427,6 +425,7 @@ public class HorizontalCardHolder : MonoBehaviour
             dragCard.SetReturning(true);
             dragCard.SetSelected(false, false);
             dragCard.SetInteractionEnabled(false);
+            dragCard.HideShadow();
         }
 
         List<RectTransform> targetSlots = CreatePlayAreaSlots(activeDragGroup.Count);
@@ -441,15 +440,9 @@ public class HorizontalCardHolder : MonoBehaviour
 
             dragCard.KillTweens();
             dragCard.TweenScale(Vector3.one, playAreaDuration, playAreaEase);
-            if (dragCard == draggedCard)
-                dragCard.TweenShadowScale(shadowReturnScale, playAreaDuration, playAreaEase);
 
             dragCard.RectTransform.DOMove(targetWorldPosition, playAreaDuration)
                 .SetEase(playAreaEase)
-                .OnUpdate(() =>
-                {
-                    dragCard.UpdateShadow(shadowOffset);
-                })
                 .OnComplete(() =>
                 {
                     if (dragCard == null || targetSlot == null)
@@ -459,7 +452,6 @@ public class HorizontalCardHolder : MonoBehaviour
                     dragCard.SnapToLocal(Vector2.zero);
                     dragCard.SnapScale(Vector3.one);
                     dragCard.SetReturning(false);
-                    dragCard.HideShadow();
 
                     completedCount++;
                     if (completedCount >= expectedCount)

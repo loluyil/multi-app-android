@@ -1,43 +1,40 @@
 fileFormatVersion: 2
-guid: d6cf62985b237bf4d986a4b83b3d7a03
+guid: 7036919c398d78a4dbb792ce543907ab
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 636565181274389993
-    second: diamonds-7_0
+      213: 6128587682147097611
+    second: diamonds-6_0
   - first:
-      213: 5208612336136230600
-    second: diamonds-7_1
+      213: 9186941317331119642
+    second: diamonds-6_1
   - first:
-      213: -9018108824677141237
-    second: diamonds-7_2
+      213: -707878009530988212
+    second: diamonds-6_2
   - first:
-      213: 3838342110885925437
-    second: diamonds-7_3
+      213: -2660148072005814778
+    second: diamonds-6_3
   - first:
-      213: 3851261579866162574
-    second: diamonds-7_4
+      213: 469455727556679882
+    second: diamonds-6_4
   - first:
-      213: -7685865800531661622
-    second: diamonds-7_5
+      213: 4440756799177361534
+    second: diamonds-6_5
   - first:
-      213: -7866032619297924531
-    second: diamonds-7_6
+      213: 2055048597492496797
+    second: diamonds-6_6
   - first:
-      213: 6083954242013648921
-    second: diamonds-7_7
+      213: -1751804366863904948
+    second: diamonds-6_7
   - first:
-      213: 958037375291399186
-    second: diamonds-7_8
+      213: 8329088300670396218
+    second: diamonds-6_8
   - first:
-      213: -269019072120941453
-    second: diamonds-7_9
+      213: -4784346094814475802
+    second: diamonds-6_9
   - first:
-      213: 8330206106480226653
-    second: diamonds-7_10
-  - first:
-      213: -713036856624978990
-    second: diamonds-7_11
+      213: -7147084421080082749
+    second: diamonds-6_10
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -159,7 +156,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: diamonds-7_0
+      name: diamonds-6_0
       rect:
         serializedVersion: 2
         x: 5
@@ -174,14 +171,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 9edfd32e8a885d800800000000000000
-      internalID: 636565181274389993
+      spriteID: b0c5639b60e1d0550800000000000000
+      internalID: 6128587682147097611
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: diamonds-7_1
+      name: diamonds-6_1
       rect:
         serializedVersion: 2
         x: 5
@@ -196,14 +193,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 8c61e14c255b84840800000000000000
-      internalID: 5208612336136230600
+      spriteID: a1e61ef14729e7f70800000000000000
+      internalID: 9186941317331119642
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: diamonds-7_2
+      name: diamonds-6_2
       rect:
         serializedVersion: 2
         x: 18
@@ -218,14 +215,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: b05bd4fcdcd39d280800000000000000
-      internalID: -9018108824677141237
+      spriteID: c49489963bc1d26f0800000000000000
+      internalID: -707878009530988212
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: diamonds-7_3
+      name: diamonds-6_3
       rect:
         serializedVersion: 2
         x: 40
@@ -240,14 +237,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: d3257cd30d7844530800000000000000
-      internalID: 3838342110885925437
+      spriteID: 606372e2c61451bd0800000000000000
+      internalID: -2660148072005814778
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: diamonds-7_4
+      name: diamonds-6_4
       rect:
         serializedVersion: 2
         x: 29
@@ -262,14 +259,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: e854805800e627530800000000000000
-      internalID: 3851261579866162574
+      spriteID: ac8d9c63f77d38600800000000000000
+      internalID: 469455727556679882
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: diamonds-7_5
+      name: diamonds-6_5
       rect:
         serializedVersion: 2
         x: 18
@@ -284,14 +281,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: accacff96c1565590800000000000000
-      internalID: -7685865800531661622
+      spriteID: e780edcd7ccb0ad30800000000000000
+      internalID: 4440756799177361534
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: diamonds-7_6
+      name: diamonds-6_6
       rect:
         serializedVersion: 2
         x: 40
@@ -306,18 +303,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: d4a9c1f320d36d290800000000000000
-      internalID: -7866032619297924531
+      spriteID: d9974b1bfcff48c10800000000000000
+      internalID: 2055048597492496797
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: diamonds-7_7
+      name: diamonds-6_7
       rect:
         serializedVersion: 2
-        x: 29
-        y: 26
+        x: 18
+        y: 12
         width: 13
         height: 13
       alignment: 0
@@ -328,14 +325,36 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 91854f0262c8e6450800000000000000
-      internalID: 6083954242013648921
+      spriteID: c4f4915b53750b7e0800000000000000
+      internalID: -1751804366863904948
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: diamonds-7_8
+      name: diamonds-6_8
+      rect:
+        serializedVersion: 2
+        x: 40
+        y: 12
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a3722581eadd69370800000000000000
+      internalID: 8329088300670396218
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: diamonds-6_9
       rect:
         serializedVersion: 2
         x: 57
@@ -350,58 +369,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 21c9acbbae1ab4d00800000000000000
-      internalID: 958037375291399186
+      spriteID: 6e94e0843969a9db0800000000000000
+      internalID: -4784346094814475802
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: diamonds-7_9
-      rect:
-        serializedVersion: 2
-        x: 18
-        y: 12
-        width: 13
-        height: 13
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 3741d684490444cf0800000000000000
-      internalID: -269019072120941453
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: diamonds-7_10
-      rect:
-        serializedVersion: 2
-        x: 40
-        y: 12
-        width: 13
-        height: 13
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: d513b8a8156da9370800000000000000
-      internalID: 8330206106480226653
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: diamonds-7_11
+      name: diamonds-6_10
       rect:
         serializedVersion: 2
         x: 57
@@ -416,8 +391,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 2d36b19b1c8ca16f0800000000000000
-      internalID: -713036856624978990
+      spriteID: 3c61bcdf59470dc90800000000000000
+      internalID: -7147084421080082749
       vertices: []
       indices: 
       edges: []
@@ -436,18 +411,17 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      diamonds-7_0: 636565181274389993
-      diamonds-7_1: 5208612336136230600
-      diamonds-7_10: 8330206106480226653
-      diamonds-7_11: -713036856624978990
-      diamonds-7_2: -9018108824677141237
-      diamonds-7_3: 3838342110885925437
-      diamonds-7_4: 3851261579866162574
-      diamonds-7_5: -7685865800531661622
-      diamonds-7_6: -7866032619297924531
-      diamonds-7_7: 6083954242013648921
-      diamonds-7_8: 958037375291399186
-      diamonds-7_9: -269019072120941453
+      diamonds-6_0: 6128587682147097611
+      diamonds-6_1: 9186941317331119642
+      diamonds-6_10: -7147084421080082749
+      diamonds-6_2: -707878009530988212
+      diamonds-6_3: -2660148072005814778
+      diamonds-6_4: 469455727556679882
+      diamonds-6_5: 4440756799177361534
+      diamonds-6_6: 2055048597492496797
+      diamonds-6_7: -1751804366863904948
+      diamonds-6_8: 8329088300670396218
+      diamonds-6_9: -4784346094814475802
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

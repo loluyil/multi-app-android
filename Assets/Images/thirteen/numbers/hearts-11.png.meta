@@ -1,22 +1,22 @@
 fileFormatVersion: 2
-guid: 0028642be1b7618468b5e2405969a1cd
+guid: 84198c9f368303e409ed1a7c1c70b218
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 7514619847492832201
-    second: hearts-11_0
+      213: 5748849880368545215
+    second: hearts-10_0
   - first:
-      213: -521865928042049531
-    second: hearts-11_1
+      213: 1412147500829265805
+    second: hearts-10_1
   - first:
-      213: 945322397957294507
-    second: hearts-11_2
+      213: 3365502590941415547
+    second: hearts-10_2
   - first:
-      213: 1880934840592728979
-    second: hearts-11_3
+      213: -1165555566225805209
+    second: hearts-10_3
   - first:
-      213: -5394487245551539081
-    second: hearts-11_4
+      213: -3965520194183916731
+    second: hearts-10_4
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -138,7 +138,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: hearts-11_0
+      name: hearts-10_0
       rect:
         serializedVersion: 2
         x: 5
@@ -153,14 +153,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 9cb09e7efea494860800000000000000
-      internalID: 7514619847492832201
+      spriteID: fbdf96ae18408cf40800000000000000
+      internalID: 5748849880368545215
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-11_1
+      name: hearts-10_1
       rect:
         serializedVersion: 2
         x: 5
@@ -175,20 +175,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 5009ca214b5f1c8f0800000000000000
-      internalID: -521865928042049531
+      spriteID: d8f426d8ba4f89310800000000000000
+      internalID: 1412147500829265805
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-11_2
+      name: hearts-10_2
       rect:
         serializedVersion: 2
-        x: 12
-        y: 5
-        width: 47
-        height: 85
+        x: 10
+        y: 4
+        width: 51
+        height: 87
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -197,14 +197,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: ba9077066b57e1d00800000000000000
-      internalID: 945322397957294507
+      spriteID: b7848b776caa4be20800000000000000
+      internalID: 3365502590941415547
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-11_3
+      name: hearts-10_3
       rect:
         serializedVersion: 2
         x: 57
@@ -219,14 +219,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 3938f2b954c6a1a10800000000000000
-      internalID: 1880934840592728979
+      spriteID: 760b12d436d13dfe0800000000000000
+      internalID: -1165555566225805209
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hearts-11_4
+      name: hearts-10_4
       rect:
         serializedVersion: 2
         x: 57
@@ -241,8 +241,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 77c668f6e6ee225b0800000000000000
-      internalID: -5394487245551539081
+      spriteID: 5439704c464a7f8c0800000000000000
+      internalID: -3965520194183916731
       vertices: []
       indices: 
       edges: []
@@ -261,11 +261,11 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      hearts-11_0: 7514619847492832201
-      hearts-11_1: -521865928042049531
-      hearts-11_2: 945322397957294507
-      hearts-11_3: 1880934840592728979
-      hearts-11_4: -5394487245551539081
+      hearts-10_0: 5748849880368545215
+      hearts-10_1: 1412147500829265805
+      hearts-10_2: 3365502590941415547
+      hearts-10_3: -1165555566225805209
+      hearts-10_4: -3965520194183916731
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
