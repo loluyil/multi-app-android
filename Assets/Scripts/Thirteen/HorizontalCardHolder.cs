@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using DG.Tweening;
+using System;
 
 public class HorizontalCardHolder : MonoBehaviour
 {
@@ -20,17 +21,20 @@ public class HorizontalCardHolder : MonoBehaviour
     [SerializeField] private float dragScale = 1.08f;
     [SerializeField] private Vector2 shadowOffset = new Vector2(0f, -18f);
     [SerializeField] private float shadowReturnScale = 0.9f;
+    [SerializeField] private float multiDragSeparation = 42f;
     [SerializeField] private Ease shiftEase = Ease.OutCubic;
     [SerializeField] private Ease returnEase = Ease.OutCubic;
     [SerializeField] private Ease dragScaleEase = Ease.OutQuad;
 
     private Card draggedCard;
-    private Card selectedHandCard;
     private RectTransform holderRect;
     private HorizontalLayoutGroup layoutGroup;
     private readonly List<Card> cards = new List<Card>();
     private readonly List<RectTransform> slots = new List<RectTransform>();
     private int previewIndex = -1;
+    private bool initialized;
+    private readonly List<Card> activeDragGroup = new List<Card>();
+    private int draggedCardGroupIndex;
 
     private void Awake()
     {
@@ -43,29 +47,27 @@ public class HorizontalCardHolder : MonoBehaviour
             if (canvas != null)
                 dragLayer = canvas.transform as RectTransform;
         }
+        InitializeHand();
     }
 
-    private void Start()
+    public void SetHand(IReadOnlyList<Card.CardData> hand, IReadOnlyDictionary<string, Sprite> spriteLookup)
     {
-        // CLEAR OLD
-        for (int i = transform.childCount - 1; i >= 0; i--)
-            Destroy(transform.GetChild(i).gameObject);
+        if (hand == null || spriteLookup == null)
+            return;
 
-        // CREATE SLOTS + CARDS
-        for (int i = 0; i < slotCount; i++)
-        {
-            GameObject slot = Instantiate(slotPrefab, transform);
-            slot.name = "Slot_" + i;
-
-            GameObject cardObj = Instantiate(cardPrefab, slot.transform);
-            cardObj.name = "Card_" + i;
-
-            RectTransform rect = cardObj.GetComponent<RectTransform>();
-            rect.anchoredPosition = Vector2.zero;
-            rect.localScale = Vector3.one;
-        }
-
+        InitializeHand();
         CacheSlotsAndCards();
+
+        int count = Mathf.Min(hand.Count, cards.Count);
+        for (int i = 0; i < count; i++)
+        {
+            Card.CardData data = hand[i];
+            spriteLookup.TryGetValue(data.SpriteKey, out Sprite sprite);
+            cards[i].SetCardData(data, sprite);
+            cards[i].SetSelected(false, false);
+            cards[i].SnapToLocal(Vector2.zero);
+            cards[i].SnapScale(Vector3.one);
+        }
     }
 
     private void OnBeginDrag(Card card)
@@ -74,20 +76,35 @@ public class HorizontalCardHolder : MonoBehaviour
             return;
 
         draggedCard = card;
-        previewIndex = GetCardIndex(card);
+        activeDragGroup.Clear();
+        activeDragGroup.AddRange(GetDragGroup(card));
+        draggedCardGroupIndex = activeDragGroup.IndexOf(card);
+        previewIndex = GetGroupStartIndex(GetCardIndex(card));
 
         if (previewIndex < 0)
             return;
 
-        cards.Remove(card);
+        foreach (Card dragCard in activeDragGroup)
+            cards.Remove(dragCard);
 
-        card.KillTweens();
-        card.transform.SetParent(dragLayer, true);
-        card.ShowShadow(dragLayer, shadowOffset);
-        card.transform.SetAsLastSibling();
-        card.PlaceShadowBehindCard();
-        card.TweenScale(Vector3.one * dragScale, shiftDuration, dragScaleEase);
+        for (int i = 0; i < activeDragGroup.Count; i++)
+        {
+            Card dragCard = activeDragGroup[i];
+            dragCard.KillTweens();
+            dragCard.transform.SetParent(dragLayer, true);
+            dragCard.ShowShadow(dragLayer, shadowOffset);
 
+            if (dragCard == draggedCard)
+            {
+                dragCard.TweenScale(Vector3.one * dragScale, shiftDuration, dragScaleEase);
+            }
+            else
+            {
+                UpdateGroupedCardPosition(dragCard, i);
+            }
+        }
+
+        UpdateDragGroupLayering();
         ArrangeCards(false);
     }
 
@@ -96,27 +113,51 @@ public class HorizontalCardHolder : MonoBehaviour
         if (card == null || previewIndex < 0)
             return;
 
-        card.KillTweens();
-        card.TweenScale(Vector3.one, returnDuration, returnEase);
-        card.TweenShadowScale(shadowReturnScale, returnDuration, returnEase);
+        foreach (Card dragCard in activeDragGroup)
+            dragCard.SetReturning(true);
 
-        cards.Insert(previewIndex, card);
-        RectTransform targetSlot = slots[previewIndex];
+        cards.InsertRange(previewIndex, activeDragGroup);
 
-        card.RectTransform.DOMove(targetSlot.position, returnDuration)
-            .SetEase(returnEase)
-            .OnUpdate(() => card.UpdateShadow(shadowOffset))
-            .OnComplete(() =>
-            {
-                if (card == null || targetSlot == null)
-                    return;
+        int completedCount = 0;
+        int expectedCount = activeDragGroup.Count;
 
-                card.transform.SetParent(targetSlot, false);
-                card.SnapToLocal(Vector2.zero);
-                card.SnapScale(Vector3.one);
-                ArrangeCards(false);
-                card.HideShadow();
-            });
+        for (int i = 0; i < activeDragGroup.Count; i++)
+        {
+            Card dragCard = activeDragGroup[i];
+            RectTransform targetSlot = slots[previewIndex + i];
+            Vector3 targetWorldPosition = dragCard.GetTargetWorldPosition(targetSlot);
+
+            dragCard.KillTweens();
+            dragCard.TweenScale(Vector3.one, returnDuration, returnEase);
+            if (dragCard == draggedCard)
+                dragCard.TweenShadowScale(shadowReturnScale, returnDuration, returnEase);
+
+            dragCard.RectTransform.DOMove(targetWorldPosition, returnDuration)
+                .SetEase(returnEase)
+                .OnUpdate(() =>
+                {
+                    dragCard.UpdateShadow(shadowOffset);
+                })
+                .OnComplete(() =>
+                {
+                    if (dragCard == null || targetSlot == null)
+                        return;
+
+                    dragCard.transform.SetParent(targetSlot, false);
+                    dragCard.SnapToLocal(Vector2.zero);
+                    dragCard.SnapScale(Vector3.one);
+                    dragCard.SetReturning(false);
+                    dragCard.SetSelected(dragCard.IsSelected, false);
+                    dragCard.HideShadow();
+
+                    completedCount++;
+                    if (completedCount >= expectedCount)
+                    {
+                        ArrangeCards(false);
+                        activeDragGroup.Clear();
+                    }
+                });
+        }
 
         draggedCard = null;
         previewIndex = -1;
@@ -131,8 +172,9 @@ public class HorizontalCardHolder : MonoBehaviour
             return;
 
         draggedCard.UpdateShadow(shadowOffset);
+        UpdateGroupedCardPositions();
 
-        int targetIndex = GetPreviewIndex(draggedCard.transform.position.x);
+        int targetIndex = GetGroupStartIndex(GetPreviewIndex(draggedCard.transform.position.x));
         if (targetIndex == previewIndex)
             return;
 
@@ -172,6 +214,31 @@ public class HorizontalCardHolder : MonoBehaviour
         }
     }
 
+    private void InitializeHand()
+    {
+        if (initialized)
+            return;
+
+        for (int i = transform.childCount - 1; i >= 0; i--)
+            Destroy(transform.GetChild(i).gameObject);
+
+        for (int i = 0; i < slotCount; i++)
+        {
+            GameObject slot = Instantiate(slotPrefab, transform);
+            slot.name = "Slot_" + i;
+
+            GameObject cardObj = Instantiate(cardPrefab, slot.transform);
+            cardObj.name = "Card_" + i;
+
+            RectTransform rect = cardObj.GetComponent<RectTransform>();
+            rect.anchoredPosition = Vector2.zero;
+            rect.localScale = Vector3.one;
+        }
+
+        initialized = true;
+        CacheSlotsAndCards();
+    }
+
     private int GetCardIndex(Card card)
     {
         for (int i = 0; i < slots.Count; i++)
@@ -207,10 +274,11 @@ public class HorizontalCardHolder : MonoBehaviour
             return;
 
         int cardIndex = 0;
+        int groupCount = activeDragGroup.Count;
 
         for (int slotIndex = 0; slotIndex < slots.Count; slotIndex++)
         {
-            if (slotIndex == previewIndex && draggedCard != null)
+            if (draggedCard != null && slotIndex >= previewIndex && slotIndex < previewIndex + groupCount)
                 continue;
 
             if (cardIndex >= cards.Count)
@@ -236,17 +304,71 @@ public class HorizontalCardHolder : MonoBehaviour
         if (card == null || draggedCard != null)
             return;
 
-        if (selectedHandCard == card)
-        {
-            selectedHandCard.SetSelected(false, true);
-            selectedHandCard = null;
+        card.SetSelected(!card.IsSelected, true);
+    }
+
+    private List<Card> GetDragGroup(Card leadCard)
+    {
+        if (!leadCard.IsSelected)
+            return new List<Card> { leadCard };
+
+        return cards
+            .Where(card => card != null && card.IsSelected)
+            .OrderBy(GetCardIndex)
+            .ToList();
+    }
+
+    private int GetGroupStartIndex(int leadIndex)
+    {
+        if (leadIndex < 0)
+            return -1;
+
+        int groupCount = Mathf.Max(1, activeDragGroup.Count);
+        int startIndex = leadIndex - draggedCardGroupIndex;
+        return Mathf.Clamp(startIndex, 0, Mathf.Max(0, slots.Count - groupCount));
+    }
+
+    private void UpdateGroupedCardPositions()
+    {
+        if (draggedCard == null || activeDragGroup.Count == 0)
             return;
+
+        for (int i = 0; i < activeDragGroup.Count; i++)
+        {
+            Card groupedCard = activeDragGroup[i];
+            if (groupedCard == null)
+                continue;
+
+            if (groupedCard != draggedCard)
+                UpdateGroupedCardPosition(groupedCard, i);
+
+            groupedCard.UpdateShadow(shadowOffset);
         }
 
-        if (selectedHandCard != null)
-            selectedHandCard.SetSelected(false, true);
+        UpdateDragGroupLayering();
+    }
 
-        selectedHandCard = card;
-        selectedHandCard.SetSelected(true, true);
+    private void UpdateGroupedCardPosition(Card groupedCard, int groupIndex)
+    {
+        float offsetX = (groupIndex - draggedCardGroupIndex) * multiDragSeparation;
+        groupedCard.RectTransform.position = draggedCard.RectTransform.position + new Vector3(offsetX, 0f, 0f);
+    }
+
+    private void UpdateDragGroupLayering()
+    {
+        if (dragLayer == null || activeDragGroup.Count == 0 || draggedCard == null)
+            return;
+
+        List<Card> orderedCards = activeDragGroup
+            .Where(card => card != null)
+            .OrderByDescending(card => Mathf.Abs(activeDragGroup.IndexOf(card) - draggedCardGroupIndex))
+            .ThenBy(card => activeDragGroup.IndexOf(card))
+            .ToList();
+
+        foreach (Card card in orderedCards)
+        {
+            card.transform.SetAsLastSibling();
+            card.PlaceShadowBehindCard();
+        }
     }
 }

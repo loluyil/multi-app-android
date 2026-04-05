@@ -396,11 +396,6 @@ MonoBehaviour:
   shiftEase: 9
   returnEase: 9
   dragScaleEase: 6
-  handMaxTiltX: 30
-  handMaxTiltZ: 30
-  handVerticalTiltFactor: 1
-  handHorizontalTiltFactor: 1
-  handTiltReturnSpeed: 30
 --- !u!114 &1763454360
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -427,6 +422,166 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1 &1882764820
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1882764821}
+  - component: {fileID: 1882764822}
+  m_Layer: 5
+  m_Name: DeckDealer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1882764821
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1882764820}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1984870403}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1882764822
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1882764820}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0516986748f0228438d6c7f594b4d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerHandHolder: {fileID: 1763454359}
+  spriteFolder: Assets/Images/thirteen/numbers
+  cardSprites:
+  - key: clubs-1
+    sprite: {fileID: 21300000, guid: 5116ca1f335950a4b97215141dbc2f1d, type: 3}
+  - key: clubs-10
+    sprite: {fileID: 21300000, guid: c977844da0648db4f9f1f80fce9cfa9e, type: 3}
+  - key: clubs-11
+    sprite: {fileID: 21300000, guid: 98ab33d0e47bd054dbc18f97fe55c7cb, type: 3}
+  - key: clubs-12
+    sprite: {fileID: 21300000, guid: 1e69104d9a62b7448afa1891b7c754d4, type: 3}
+  - key: clubs-13
+    sprite: {fileID: 21300000, guid: 5ef5d23984f76384cac4c1170d82976e, type: 3}
+  - key: clubs-2
+    sprite: {fileID: 21300000, guid: 976e60e09fd97ce49884d605a56863e0, type: 3}
+  - key: clubs-3
+    sprite: {fileID: 21300000, guid: 9660d458bb267c845867d760dd4ebf27, type: 3}
+  - key: clubs-4
+    sprite: {fileID: 21300000, guid: 8d4c5b780cdfe634d89ff50d463ab230, type: 3}
+  - key: clubs-5
+    sprite: {fileID: 21300000, guid: 2f74f5824fc89214b8d41b558cb04685, type: 3}
+  - key: clubs-6
+    sprite: {fileID: 21300000, guid: d3661d9f821665a4496d8a0402bf2d2a, type: 3}
+  - key: clubs-7
+    sprite: {fileID: 21300000, guid: a9c3264d23efb4e47827e81908438a4a, type: 3}
+  - key: clubs-8
+    sprite: {fileID: 21300000, guid: 7ce60a12c216ce24d815fc25fcb44077, type: 3}
+  - key: clubs-9
+    sprite: {fileID: 21300000, guid: 550892654b5ca9447a002498a1e07e1f, type: 3}
+  - key: diamonds-1
+    sprite: {fileID: 21300000, guid: 58d2db42bd96fbf49aaaf7a053162513, type: 3}
+  - key: diamonds-10
+    sprite: {fileID: 21300000, guid: 3f23b1dbbf3cbea4b939be8095df5290, type: 3}
+  - key: diamonds-11
+    sprite: {fileID: 21300000, guid: 0007582f125d40d4182e9f4dd1fd36f8, type: 3}
+  - key: diamonds-12
+    sprite: {fileID: 21300000, guid: 15ec6aa2628895c4fa3cb69ea230bf71, type: 3}
+  - key: diamonds-13
+    sprite: {fileID: 21300000, guid: 4ad1aa077c5fe9c42b1799bc0136fdf3, type: 3}
+  - key: diamonds-2
+    sprite: {fileID: 21300000, guid: 816d171cadad8a142943e223afcc4e8e, type: 3}
+  - key: diamonds-3
+    sprite: {fileID: 21300000, guid: 3b86cd7b042937d4486af74b25dadfd7, type: 3}
+  - key: diamonds-4
+    sprite: {fileID: 21300000, guid: 42a539de59ad7eb46aab69e402fd3264, type: 3}
+  - key: diamonds-5
+    sprite: {fileID: 21300000, guid: db73cae3dd790c54cb06323d50383c05, type: 3}
+  - key: diamonds-6
+    sprite: {fileID: 21300000, guid: 7036919c398d78a4dbb792ce543907ab, type: 3}
+  - key: diamonds-7
+    sprite: {fileID: 21300000, guid: d6cf62985b237bf4d986a4b83b3d7a03, type: 3}
+  - key: diamonds-8
+    sprite: {fileID: 21300000, guid: 769ff98e229065741973b1ea7df8f865, type: 3}
+  - key: diamonds-9
+    sprite: {fileID: 21300000, guid: f630929048af51643a6f092957e23566, type: 3}
+  - key: hearts-1
+    sprite: {fileID: 21300000, guid: d098e59445780b4469af888055655fef, type: 3}
+  - key: hearts-10
+    sprite: {fileID: 21300000, guid: 84198c9f368303e409ed1a7c1c70b218, type: 3}
+  - key: hearts-11
+    sprite: {fileID: 21300000, guid: 0028642be1b7618468b5e2405969a1cd, type: 3}
+  - key: hearts-12
+    sprite: {fileID: 21300000, guid: ddf65523cb9ae004e8fb87ee97878f0e, type: 3}
+  - key: hearts-13
+    sprite: {fileID: 21300000, guid: 281eea791aef9dd4e9a9c03ac2d095bd, type: 3}
+  - key: hearts-2
+    sprite: {fileID: 21300000, guid: e73c650030e99714aae7a800ae68088c, type: 3}
+  - key: hearts-3
+    sprite: {fileID: 21300000, guid: 41c26caea6df51f46bae9fc1819c487f, type: 3}
+  - key: hearts-4
+    sprite: {fileID: 21300000, guid: c25338ea0bb8d954d845c61f9fa2e2cd, type: 3}
+  - key: hearts-5
+    sprite: {fileID: 21300000, guid: 9c481b070c67cfd459918cfd13cdc90c, type: 3}
+  - key: hearts-6
+    sprite: {fileID: 21300000, guid: a221afe31c24c98488c1f4fc2820e5bf, type: 3}
+  - key: hearts-7
+    sprite: {fileID: 21300000, guid: 634b1d8ae43aae6498fef66f203ab41c, type: 3}
+  - key: hearts-8
+    sprite: {fileID: 21300000, guid: a39034649be33ab42bb39c7c4f5f24bc, type: 3}
+  - key: hearts-9
+    sprite: {fileID: 21300000, guid: 864661674b74db848b5534aaa42a7f3a, type: 3}
+  - key: spades-1
+    sprite: {fileID: 21300000, guid: c7f2e44c8d3771a4cb4093dbaceb1dd5, type: 3}
+  - key: spades-10
+    sprite: {fileID: 21300000, guid: 554539330d39116498cf6ba340d476d7, type: 3}
+  - key: spades-11
+    sprite: {fileID: 21300000, guid: e1c294869c655d44ba81a023a22bdd18, type: 3}
+  - key: spades-12
+    sprite: {fileID: 21300000, guid: 4b6553814d27a3144803b0a44d43ba63, type: 3}
+  - key: spades-13
+    sprite: {fileID: 21300000, guid: af89babfed49f6b40ab237d43bf88408, type: 3}
+  - key: spades-2
+    sprite: {fileID: 21300000, guid: 9956e1ee485ed0b47af99a207fc9ae55, type: 3}
+  - key: spades-3
+    sprite: {fileID: 21300000, guid: 1d62507c23065114db991683774bc518, type: 3}
+  - key: spades-4
+    sprite: {fileID: 21300000, guid: c64640fa9316c5a4d8b0933c17c2b590, type: 3}
+  - key: spades-5
+    sprite: {fileID: 21300000, guid: 9b77f0852387e8e40b99d56391fb6b8f, type: 3}
+  - key: spades-6
+    sprite: {fileID: 21300000, guid: df4da0de9df5003468f8666af9340a8d, type: 3}
+  - key: spades-7
+    sprite: {fileID: 21300000, guid: 260f336ef36742f45a81dda4717302cb, type: 3}
+  - key: spades-8
+    sprite: {fileID: 21300000, guid: f73fa646277c54a46994c333fa20561d, type: 3}
+  - key: spades-9
+    sprite: {fileID: 21300000, guid: 9329b78f4c82e134784e3af090bc3d4e, type: 3}
+  dealOnStart: 1
+  playerHand: []
+  opponentHandA: []
+  opponentHandB: []
+  opponentHandC: []
 --- !u!1 &1984870399
 GameObject:
   m_ObjectHideFlags: 0
@@ -522,6 +677,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1763454358}
+  - {fileID: 1882764821}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}

@@ -1,10 +1,22 @@
 fileFormatVersion: 2
-guid: 3863b8fd3766e2a4eab507ed3c45bc12
+guid: 4b6553814d27a3144803b0a44d43ba63
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -4756028443593143600
-    second: shadow_0
+      213: -3085703249946019272
+    second: spades-12_0
+  - first:
+      213: -1107210052615075823
+    second: spades-12_1
+  - first:
+      213: 2484910175428934193
+    second: spades-12_2
+  - first:
+      213: -2170045450460318055
+    second: spades-12_3
+  - first:
+      213: 4908934594368551976
+    second: spades-12_4
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +49,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -46,7 +58,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 2
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -126,13 +138,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: shadow_0
+      name: spades-12_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 69
-        height: 93
+        x: 5
+        y: 79
+        width: 10
+        height: 10
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +153,96 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 0da0afd34513ffdb0800000000000000
-      internalID: -4756028443593143600
+      spriteID: 83af2b03e316d25d0800000000000000
+      internalID: -3085703249946019272
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: spades-12_1
+      rect:
+        serializedVersion: 2
+        x: 5
+        y: 69
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 118032ac25662a0f0800000000000000
+      internalID: -1107210052615075823
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: spades-12_2
+      rect:
+        serializedVersion: 2
+        x: 10
+        y: 5
+        width: 51
+        height: 85
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 13af13193ac2c7220800000000000000
+      internalID: 2484910175428934193
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: spades-12_3
+      rect:
+        serializedVersion: 2
+        x: 56
+        y: 6
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9963cd2092372e1e0800000000000000
+      internalID: -2170045450460318055
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: spades-12_4
+      rect:
+        serializedVersion: 2
+        x: 57
+        y: 16
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82cb6f2410a002440800000000000000
+      internalID: 4908934594368551976
       vertices: []
       indices: 
       edges: []
@@ -151,7 +251,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -160,7 +260,12 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      spades-12_0: -3085703249946019272
+      spades-12_1: -1107210052615075823
+      spades-12_2: 2484910175428934193
+      spades-12_3: -2170045450460318055
+      spades-12_4: 4908934594368551976
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

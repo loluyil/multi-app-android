@@ -6,6 +6,41 @@ using DG.Tweening;
 
 public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
 {
+    [System.Serializable]
+    public struct CardData
+    {
+        public Suit suit;
+        public int rank;
+
+        public CardData(Suit suit, int rank)
+        {
+            this.suit = suit;
+            this.rank = rank;
+        }
+
+        public string SpriteKey => $"{GetSuitSpriteName(suit)}-{rank}";
+    }
+
+    public enum Suit
+    {
+        Spades = 0,
+        Clubs = 1,
+        Diamonds = 2,
+        Hearts = 3
+    }
+
+    public static string GetSuitSpriteName(Suit suit)
+    {
+        return suit switch
+        {
+            Suit.Spades => "spades",
+            Suit.Clubs => "clubs",
+            Suit.Diamonds => "diamonds",
+            Suit.Hearts => "hearts",
+            _ => "spades"
+        };
+    }
+
     public UnityEvent<Card> BeginDragEvent = new UnityEvent<Card>();
     public UnityEvent<Card> EndDragEvent = new UnityEvent<Card>();
     public UnityEvent<Card> ClickedEvent = new UnityEvent<Card>();
@@ -25,6 +60,7 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
     private RectTransform rect;
     private Canvas canvas;
     private CanvasGroup group;
+    private Image artImage;
     private Tween positionTween;
     private Tween scaleTween;
     private Tween shadowScaleTween;
@@ -35,17 +71,21 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
     private float shadowScaleMultiplier = 1f;
     private bool isSelected;
     private bool isDragging;
+    private bool isReturning;
     private Vector3 lastWorldPosition;
     private bool hasLastWorldPosition;
+    private CardData data;
 
     public RectTransform RectTransform => rect;
     public bool IsSelected => isSelected;
+    public CardData Data => data;
 
     private void Awake()
     {
         rect = GetComponent<RectTransform>();
         canvas = GetComponentInParent<Canvas>();
         group = GetComponent<CanvasGroup>();
+        artImage = transform.Find("Image")?.GetComponent<Image>();
         shadowRect = transform.Find("Shadow") as RectTransform;
 
         if (shadowRect != null)
@@ -86,6 +126,9 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
 
     public void OnBeginDrag(PointerEventData eventData)
     {
+        if (isReturning)
+            return;
+
         KillTweens();
         isDragging = true;
         if (group != null) group.blocksRaycasts = false;
@@ -106,7 +149,7 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        if (isDragging)
+        if (isDragging || isReturning)
             return;
 
         ClickedEvent.Invoke(this);
@@ -222,7 +265,7 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
     {
         isSelected = selected;
 
-        if (isDragging)
+        if (isDragging || isReturning)
             return;
 
         Vector2 targetPosition = ApplySelectionOffset(Vector2.zero);
@@ -230,6 +273,32 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
             TweenToLocal(Vector2.zero, selectionDuration, selectionEase);
         else
             rect.anchoredPosition = targetPosition;
+    }
+
+    public void SetReturning(bool returning)
+    {
+        isReturning = returning;
+
+        if (group != null)
+            group.blocksRaycasts = !returning && !isDragging;
+    }
+
+    public Vector3 GetTargetWorldPosition(RectTransform slotRect)
+    {
+        if (slotRect == null)
+            return rect.position;
+
+        return slotRect.TransformPoint(ApplySelectionOffset(Vector2.zero));
+    }
+
+    public void SetCardData(CardData newData, Sprite sprite)
+    {
+        data = newData;
+
+        if (artImage != null)
+            artImage.sprite = sprite;
+
+        gameObject.name = $"{GetSuitSpriteName(newData.suit)}-{newData.rank}";
     }
 
     private void KillPositionTween()
