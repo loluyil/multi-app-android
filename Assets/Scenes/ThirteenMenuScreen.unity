@@ -1920,8 +1920,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 20
-  m_fontSizeBase: 20
+  m_fontSize: 35
+  m_fontSizeBase: 35
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -4665,7 +4665,6 @@ GameObject:
   - component: {fileID: 1746410739}
   - component: {fileID: 1746410738}
   - component: {fileID: 1746410740}
-  - component: {fileID: 1746410742}
   - component: {fileID: 1746410741}
   m_Layer: 0
   m_Name: Background
@@ -4800,28 +4799,6 @@ MonoBehaviour:
   verticalTiltFactor: 5
   horizontalTiltFactor: 5
   tiltReturnSpeed: 15
---- !u!114 &1746410742
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1746410736}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8e87d5d9aca6a2488ffb7022ece4ff9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  dragScale: 1.04
-  dragDuration: 0.14
-  returnDuration: 3
-  dragEase: 6
-  returnEase: 9
-  maxTiltX: 16
-  maxTiltZ: 22
-  verticalTiltFactor: 0.14
-  horizontalTiltFactor: 0.18
-  tiltReturnSpeed: 10
 --- !u!1 &1749824528
 GameObject:
   m_ObjectHideFlags: 0
