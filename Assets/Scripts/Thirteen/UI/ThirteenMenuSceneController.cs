@@ -17,6 +17,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
             view = GetComponent<ThirteenMenuViewRefs>();
 
         EnsureLobbyCodeInputIsConfigured();
+        EnsureReturnHoldIsConfigured();
         EnsureMenuEffectsAreConfigured();
         multiplayerService = ThirteenMultiplayerServiceRegistry.GetService();
         ConfigureDefaultInputValues();
@@ -189,6 +190,19 @@ public class ThirteenMenuSceneController : MonoBehaviour
         AttachButtonPop(view.readyButton);
         AttachButtonPop(view.startMatchButton);
         AttachButtonPop(view.leaveLobbyButton);
+    }
+
+    private void EnsureReturnHoldIsConfigured()
+    {
+        Transform returnPanel = FindSceneTransform("Return");
+        if (returnPanel == null)
+            return;
+
+        HoldToSceneLoad holdToSceneLoad = returnPanel.GetComponent<HoldToSceneLoad>();
+        if (holdToSceneLoad == null)
+            holdToSceneLoad = returnPanel.gameObject.AddComponent<HoldToSceneLoad>();
+
+        holdToSceneLoad.Configure(AppSceneNames.MainMenu, 2.25f);
     }
 
     private void WireButtons()
@@ -457,5 +471,17 @@ public class ThirteenMenuSceneController : MonoBehaviour
         rectTransform.offsetMin = offsetMin;
         rectTransform.offsetMax = offsetMax;
         rectTransform.localScale = Vector3.one;
+    }
+
+    private static Transform FindSceneTransform(string objectName)
+    {
+        Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (Transform candidate in transforms)
+        {
+            if (candidate != null && candidate.name == objectName)
+                return candidate;
+        }
+
+        return null;
     }
 }

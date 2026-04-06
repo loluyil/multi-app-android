@@ -18,7 +18,7 @@ public static class AppSceneOrientationController
 
     private static void ApplyOrientation(string sceneName)
     {
-        if (sceneName == AppSceneNames.Sudoku)
+        if (sceneName == AppSceneNames.MainMenu || sceneName == AppSceneNames.Sudoku)
         {
             Screen.autorotateToPortrait = true;
             Screen.autorotateToPortraitUpsideDown = true;

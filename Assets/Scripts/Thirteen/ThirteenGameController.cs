@@ -4,6 +4,8 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using DG.Tweening;
+using TMPro;
+using UnityEngine.SceneManagement;
 
 public class ThirteenGameController : MonoBehaviour
 {
@@ -11,6 +13,10 @@ public class ThirteenGameController : MonoBehaviour
     [SerializeField] private ThirteenDeckDealer deckDealer;
     [SerializeField] private HorizontalCardHolder localHandHolder;
     [SerializeField] private Button passButton;
+    [SerializeField] private Button leaveButton;
+    [SerializeField] private Button confirmLeaveYesButton;
+    [SerializeField] private Button confirmLeaveNoButton;
+    [SerializeField] private TMP_Text leavePromptText;
 
     [Header("Match")]
     [SerializeField] private int localPlayerSeat = 0;
@@ -43,6 +49,7 @@ public class ThirteenGameController : MonoBehaviour
     private readonly Dictionary<string, int> remoteLastSeenSeq = new Dictionary<string, int>();
     private readonly Dictionary<int, string> seatToPlayerId = new Dictionary<int, string>();
     private readonly Dictionary<string, int> playerIdToSeat = new Dictionary<string, int>();
+    private string leavePromptDefaultText = "leave";
 
     private void Awake()
     {
@@ -54,6 +61,10 @@ public class ThirteenGameController : MonoBehaviour
 
         if (passButton != null)
             passButton.onClick.AddListener(OnPassButtonClicked);
+
+        ResolveLeaveUiReferences();
+        WireLeaveUi();
+        HideLeaveConfirmation();
     }
 
     private IEnumerator Start()
@@ -167,6 +178,117 @@ public class ThirteenGameController : MonoBehaviour
     {
         if (passButton != null)
             passButton.onClick.RemoveListener(OnPassButtonClicked);
+
+        if (leaveButton != null)
+            leaveButton.onClick.RemoveListener(OnLeaveButtonClicked);
+
+        if (confirmLeaveYesButton != null)
+            confirmLeaveYesButton.onClick.RemoveListener(OnConfirmLeaveYesClicked);
+
+        if (confirmLeaveNoButton != null)
+            confirmLeaveNoButton.onClick.RemoveListener(OnConfirmLeaveNoClicked);
+    }
+
+    private void ResolveLeaveUiReferences()
+    {
+        if (leaveButton == null)
+            leaveButton = FindButton("LeaveButton");
+
+        if (confirmLeaveYesButton == null)
+            confirmLeaveYesButton = FindButton("YesButton");
+
+        if (confirmLeaveNoButton == null)
+            confirmLeaveNoButton = FindButton("NoButton");
+
+        if (leavePromptText == null && leaveButton != null)
+            leavePromptText = leaveButton.GetComponentInChildren<TMP_Text>(true);
+
+        if (leavePromptText != null && !string.IsNullOrWhiteSpace(leavePromptText.text))
+            leavePromptDefaultText = leavePromptText.text;
+
+        AttachButtonPop(leaveButton);
+        AttachButtonPop(confirmLeaveYesButton);
+        AttachButtonPop(confirmLeaveNoButton);
+    }
+
+    private void WireLeaveUi()
+    {
+        if (leaveButton != null)
+        {
+            leaveButton.onClick.RemoveListener(OnLeaveButtonClicked);
+            leaveButton.onClick.AddListener(OnLeaveButtonClicked);
+        }
+
+        if (confirmLeaveYesButton != null)
+        {
+            confirmLeaveYesButton.onClick.RemoveListener(OnConfirmLeaveYesClicked);
+            confirmLeaveYesButton.onClick.AddListener(OnConfirmLeaveYesClicked);
+        }
+
+        if (confirmLeaveNoButton != null)
+        {
+            confirmLeaveNoButton.onClick.RemoveListener(OnConfirmLeaveNoClicked);
+            confirmLeaveNoButton.onClick.AddListener(OnConfirmLeaveNoClicked);
+        }
+    }
+
+    private void OnLeaveButtonClicked()
+    {
+        if (confirmLeaveYesButton != null)
+            confirmLeaveYesButton.gameObject.SetActive(true);
+
+        if (confirmLeaveNoButton != null)
+            confirmLeaveNoButton.gameObject.SetActive(true);
+
+        if (leavePromptText != null)
+            leavePromptText.text = "you sure?";
+    }
+
+    private void OnConfirmLeaveYesClicked()
+    {
+        SceneManager.LoadScene(AppSceneNames.ThirteenMenu);
+    }
+
+    private void OnConfirmLeaveNoClicked()
+    {
+        HideLeaveConfirmation();
+    }
+
+    private void HideLeaveConfirmation()
+    {
+        if (confirmLeaveYesButton != null)
+            confirmLeaveYesButton.gameObject.SetActive(false);
+
+        if (confirmLeaveNoButton != null)
+            confirmLeaveNoButton.gameObject.SetActive(false);
+
+        if (leavePromptText != null)
+            leavePromptText.text = leavePromptDefaultText;
+    }
+
+    private static Button FindButton(string objectName)
+    {
+        Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (Transform candidate in transforms)
+        {
+            if (candidate == null || candidate.name != objectName)
+                continue;
+
+            Button button = candidate.GetComponent<Button>();
+            if (button != null)
+                return button;
+        }
+
+        return null;
+    }
+
+    private static void AttachButtonPop(Button button)
+    {
+        if (button == null)
+            return;
+
+        if (button.gameObject.GetComponent<ThirteenMenuButtonPop>() == null)
+            button.gameObject.AddComponent<ThirteenMenuButtonPop>();
     }
 
     public bool TryPlayLocalCards(IReadOnlyList<Card.CardData> cardsToPlay, IReadOnlyList<Card> draggedCards = null)

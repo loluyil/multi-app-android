@@ -47,6 +47,9 @@ public class ButtonManager : MonoBehaviour
             settingsPanel.SetActive(false);
         if (boardPanel != null)
             boardPanel.SetActive(false);
+
+        AddPopToSceneButtons();
+        ConfigureReturnHold();
     }
 
     void Update()
@@ -183,5 +186,43 @@ public class ButtonManager : MonoBehaviour
         btn.transform
             .DOScale(1.2f, 0.1f)
             .OnComplete(() => btn.transform.DOScale(1f, 0.1f));
+    }
+
+    private void AddPopToSceneButtons()
+    {
+        Button[] buttons = FindObjectsByType<Button>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (Button button in buttons)
+        {
+            if (button == null)
+                continue;
+
+            if (button.gameObject.GetComponent<ThirteenMenuButtonPop>() == null)
+                button.gameObject.AddComponent<ThirteenMenuButtonPop>();
+        }
+    }
+
+    private void ConfigureReturnHold()
+    {
+        Transform returnPanel = FindSceneTransform("Return");
+        if (returnPanel == null)
+            return;
+
+        HoldToSceneLoad holdToSceneLoad = returnPanel.GetComponent<HoldToSceneLoad>();
+        if (holdToSceneLoad == null)
+            holdToSceneLoad = returnPanel.gameObject.AddComponent<HoldToSceneLoad>();
+
+        holdToSceneLoad.Configure(AppSceneNames.MainMenu, 2.25f);
+    }
+
+    private static Transform FindSceneTransform(string objectName)
+    {
+        Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (Transform candidate in transforms)
+        {
+            if (candidate != null && candidate.name == objectName)
+                return candidate;
+        }
+
+        return null;
     }
 }

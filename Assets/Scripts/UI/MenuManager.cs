@@ -6,43 +6,71 @@ using TMPro;
 public class MenuManager : MonoBehaviour
 {
     [SerializeField] private Button startButton;
-    [SerializeField] private Button difficultyButton;
-    [SerializeField] private Button settingsButton;
+    [SerializeField] private Button thirteenButton;
 
-
-    void Start()
+    private void Start()
     {
-        difficultyButton.GetComponent<Button>().onClick.AddListener(DifficultyButtonOnClick);
-        startButton.GetComponent<Button>().onClick.AddListener(StartButtonOnClick);
+        if (startButton == null)
+            startButton = FindButton("SudokuButton", "Sudoku");
+
+        if (thirteenButton == null)
+            thirteenButton = FindButton("ThirteenButton", "Thirteen");
+
+        WireSceneButton(startButton, LoadSudokuScene);
+        WireSceneButton(thirteenButton, LoadThirteenMenuScene);
+
+        AddPopToAllSceneButtons();
     }
 
-    void StartButtonOnClick()
+    private void LoadSudokuScene()
     {
-        SceneManager.LoadScene("SudokuScene");
+        SceneManager.LoadScene(AppSceneNames.Sudoku);
     }
 
-    void DifficultyButtonOnClick()
+    private void LoadThirteenMenuScene()
     {
-        // Logic to change difficulty
-        // For example, toggle between Easy, Medium, Hard
-        if (GameSettings._difficulty == SudokuLogic.DifficultyLevel.Easy)
+        SceneManager.LoadScene(AppSceneNames.ThirteenMenu);
+    }
+
+    private void WireSceneButton(Button button, UnityEngine.Events.UnityAction action)
+    {
+        if (button == null)
+            return;
+
+        button.onClick.RemoveListener(action);
+        button.onClick.AddListener(action);
+    }
+
+    private void AddPopToAllSceneButtons()
+    {
+        Button[] buttons = GetComponentsInChildren<Button>(true);
+        foreach (Button button in buttons)
         {
-            GameSettings._difficulty = SudokuLogic.DifficultyLevel.Medium;
+            if (button == null)
+                continue;
+
+            if (button.gameObject.GetComponent<ThirteenMenuButtonPop>() == null)
+                button.gameObject.AddComponent<ThirteenMenuButtonPop>();
         }
-        else if (GameSettings._difficulty == SudokuLogic.DifficultyLevel.Medium)
+    }
+
+    private Button FindButton(string objectName, string labelText)
+    {
+        Button[] buttons = GetComponentsInChildren<Button>(true);
+        foreach (Button button in buttons)
         {
-            GameSettings._difficulty = SudokuLogic.DifficultyLevel.Hard;
-        }
-        else if (GameSettings._difficulty == SudokuLogic.DifficultyLevel.Hard)
-        {
-            GameSettings._difficulty = SudokuLogic.DifficultyLevel.Expert;
-        }
-        else
-        {
-            GameSettings._difficulty = SudokuLogic.DifficultyLevel.Easy;
+            if (button == null)
+                continue;
+
+            if (button.gameObject.name.Contains(objectName))
+                return button;
+
+            TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
+            if (label != null && label.text.Contains(labelText))
+                return button;
         }
 
-        difficultyButton.GetComponentInChildren<TMP_Text>().text = GameSettings._difficulty.ToString();
+        return null;
     }
 }
 
