@@ -13,5 +13,6 @@ public enum ThirteenMultiplayerEntryMode
 
 public enum ThirteenMultiplayerTransportMode
 {
-    Mock = 0
+    Lan = 0,
+    Mock = 1
 }

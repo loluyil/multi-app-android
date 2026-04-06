@@ -4,7 +4,7 @@ public static class ThirteenMultiplayerServiceRegistry
 
     public static IThirteenMultiplayerService GetService()
     {
-        service ??= new ThirteenMockMultiplayerService();
+        service ??= new ThirteenRelayMultiplayerService();
         return service;
     }
 

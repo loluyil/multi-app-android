@@ -18,14 +18,16 @@ public class ThirteenMatchState
     }
 
     private readonly bool[] passed = new bool[4];
+    private readonly bool enforceTurnOrder;
 
     public int CurrentTurnSeat { get; private set; }
     public int LeadingSeat { get; private set; } = -1;
     public bool TrickIsOpen => !CurrentHand.IsValid;
     public ThirteenRules.AnalyzedHand CurrentHand { get; private set; }
 
-    public ThirteenMatchState(int startingSeat = 0)
+    public ThirteenMatchState(int startingSeat = 0, bool enforceTurnOrder = true)
     {
+        this.enforceTurnOrder = enforceTurnOrder;
         CurrentTurnSeat = Mathf.Clamp(startingSeat, 0, 3);
         CurrentHand = default;
     }
@@ -42,7 +44,7 @@ public class ThirteenMatchState
         if (!analyzedHand.IsValid)
             return Fail("Selected cards do not form a valid hand.", analyzedHand);
 
-        if (seat != CurrentTurnSeat)
+        if (enforceTurnOrder && seat != CurrentTurnSeat)
             return Fail($"It is not seat {seat}'s turn.", analyzedHand);
 
         if (!ThirteenRules.CanPlayOn(analyzedHand, CurrentHand, out string reason))
@@ -64,7 +66,7 @@ public class ThirteenMatchState
             return false;
         }
 
-        if (seat != CurrentTurnSeat)
+        if (enforceTurnOrder && seat != CurrentTurnSeat)
         {
             reason = $"It is not seat {seat}'s turn.";
             return false;

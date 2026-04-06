@@ -7,9 +7,26 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
     private readonly System.Random random = new System.Random();
     private ThirteenLobbyState currentLobby;
     private string localPlayerId;
+    private int lobbyRevision;
+    private string lastStatus = string.Empty;
+    private int statusRevision;
+    private bool matchStartRequested;
 
     public ThirteenLobbyState CurrentLobby => currentLobby;
     public bool IsConnected => currentLobby != null;
+    public int LobbyRevision => lobbyRevision;
+    public string LastStatus => lastStatus;
+    public int StatusRevision => statusRevision;
+    public bool MatchStartRequested => matchStartRequested;
+    public bool IsHost => currentLobby != null && currentLobby.IsHostView;
+    public string LocalPlayerId => localPlayerId;
+    public int MatchDataRevision => 0;
+
+    public string GetMatchProperty(string key) => null;
+    public void PublishMatchProperty(string key, string value) { }
+    public void PublishMatchProperties(System.Collections.Generic.IDictionary<string, string> properties) { }
+    public void SubmitPlayerAction(string value) { }
+    public string GetPlayerActionFor(string playerId) => null;
 
     public ThirteenLobbyState HostLobby(string displayName)
     {
@@ -22,13 +39,15 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
             Players = new List<ThirteenLobbyPlayer>
             {
                 CreatePlayer(localPlayerId, displayName, isLocal: true, isHost: true, isReady: true, isConnected: true),
-                CreatePlaceholder("seat-2", "Open Seat 2"),
-                CreatePlaceholder("seat-3", "Open Seat 3"),
-                CreatePlaceholder("seat-4", "Open Seat 4")
+                CreateBot("bot-1", "Bot 1"),
+                CreateBot("bot-2", "Bot 2"),
+                CreateBot("bot-3", "Bot 3")
             }
         };
 
         RefreshStartState();
+        lobbyRevision++;
+        SetStatus("Mock host lobby created.");
         return CloneLobby();
     }
 
@@ -47,11 +66,13 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
                 CreatePlayer("host-seat", "Host Player", isLocal: false, isHost: true, isReady: true, isConnected: true),
                 CreatePlayer(localPlayerId, displayName, isLocal: true, isHost: false, isReady: false, isConnected: true),
                 CreatePlayer("peer-seat", "Remote Player", isLocal: false, isHost: false, isReady: true, isConnected: true),
-                CreatePlaceholder("seat-4", "Open Seat 4")
+                CreateBot("bot-1", "Bot 1")
             }
         };
 
         RefreshStartState();
+        lobbyRevision++;
+        SetStatus("Mock join lobby created.");
         return CloneLobby();
     }
 
@@ -65,6 +86,8 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
             localPlayer.IsReady = !localPlayer.IsReady;
 
         RefreshStartState();
+        lobbyRevision++;
+        SetStatus("Mock ready state updated.");
         return CloneLobby();
     }
 
@@ -74,13 +97,26 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
             return null;
 
         RefreshStartState();
+        matchStartRequested = currentLobby.CanStartMatch;
+        SetStatus(matchStartRequested ? "Mock match start requested." : "Mock host cannot start yet.");
         return CloneLobby();
+    }
+
+    public void ClearMatchStartFlag()
+    {
+        matchStartRequested = false;
+    }
+
+    public void Tick()
+    {
     }
 
     public void LeaveLobby()
     {
         currentLobby = null;
         localPlayerId = null;
+        lobbyRevision++;
+        matchStartRequested = false;
     }
 
     private void RefreshStartState()
@@ -88,12 +124,12 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
         if (currentLobby == null)
             return;
 
-        int connectedPlayers = currentLobby.Players.Count(player => !player.IsPlaceholder && player.IsConnected);
-        bool allReady = currentLobby.Players
-            .Where(player => !player.IsPlaceholder && player.IsConnected)
+        int humanCount = currentLobby.Players.Count(player => !player.IsPlaceholder && !player.IsBot && player.IsConnected);
+        bool allHumansReady = currentLobby.Players
+            .Where(player => !player.IsPlaceholder && !player.IsBot && player.IsConnected)
             .All(player => player.IsReady || player.IsHost);
 
-        currentLobby.CanStartMatch = currentLobby.IsHostView && connectedPlayers >= 2 && allReady;
+        currentLobby.CanStartMatch = currentLobby.IsHostView && humanCount >= 1 && allHumansReady;
     }
 
     private string GenerateRoomCode()
@@ -131,6 +167,19 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
         };
     }
 
+    private static ThirteenLobbyPlayer CreateBot(string id, string displayName)
+    {
+        return new ThirteenLobbyPlayer
+        {
+            Id = id,
+            DisplayName = displayName,
+            IsBot = true,
+            IsReady = true,
+            IsConnected = true,
+            IsPlaceholder = false
+        };
+    }
+
     private ThirteenLobbyState CloneLobby()
     {
         if (currentLobby == null)
@@ -151,9 +200,16 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
                     IsHost = player.IsHost,
                     IsReady = player.IsReady,
                     IsConnected = player.IsConnected,
-                    IsPlaceholder = player.IsPlaceholder
+                    IsPlaceholder = player.IsPlaceholder,
+                    IsBot = player.IsBot
                 })
                 .ToList()
         };
+    }
+
+    private void SetStatus(string value)
+    {
+        lastStatus = value;
+        statusRevision++;
     }
 }

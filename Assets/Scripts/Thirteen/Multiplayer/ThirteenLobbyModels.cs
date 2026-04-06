@@ -11,6 +11,7 @@ public class ThirteenLobbyPlayer
     public bool IsReady;
     public bool IsConnected;
     public bool IsPlaceholder;
+    public bool IsBot;
 }
 
 [Serializable]

@@ -8,6 +8,8 @@ public class ThirteenMenuSceneController : MonoBehaviour
     [SerializeField] private ThirteenMenuViewRefs view;
 
     private IThirteenMultiplayerService multiplayerService;
+    private int lastLobbyRevision = -1;
+    private int lastStatusRevision = -1;
 
     private void Awake()
     {
@@ -18,6 +20,38 @@ public class ThirteenMenuSceneController : MonoBehaviour
         ConfigureDefaultInputValues();
         WireButtons();
         ShowMainPanel();
+    }
+
+    private void Update()
+    {
+        if (multiplayerService == null)
+            return;
+
+        multiplayerService.Tick();
+
+        if (multiplayerService.StatusRevision != lastStatusRevision)
+        {
+            lastStatusRevision = multiplayerService.StatusRevision;
+            if (!string.IsNullOrWhiteSpace(multiplayerService.LastStatus))
+                UpdateStatus(multiplayerService.LastStatus);
+        }
+
+        if (multiplayerService.LobbyRevision != lastLobbyRevision)
+        {
+            lastLobbyRevision = multiplayerService.LobbyRevision;
+            ThirteenLobbyState latestLobby = multiplayerService.CurrentLobby;
+            if (latestLobby != null)
+            {
+                SetPanelState(mainActive: false, multiplayerActive: false, lobbyActive: true);
+                RefreshLobby(latestLobby);
+            }
+        }
+
+        if (multiplayerService.MatchStartRequested)
+        {
+            multiplayerService.ClearMatchStartFlag();
+            ThirteenSceneRouter.LoadGame();
+        }
     }
 
     private void OnDestroy()
@@ -89,8 +123,9 @@ public class ThirteenMenuSceneController : MonoBehaviour
         string displayName = GetDisplayName();
         ThirteenSessionRuntime.Instance.ConfigureHost(displayName);
         ThirteenLobbyState lobby = multiplayerService.HostLobby(displayName);
-        ThirteenSessionRuntime.Instance.SetRoomCode(lobby.RoomCode);
-        ShowLobbyPanel(lobby, "Lobby created. This is using the modular multiplayer foundation.");
+        if (lobby != null)
+            ThirteenSessionRuntime.Instance.SetRoomCode(lobby.RoomCode);
+        ShowLobbyPanel(lobby, "LAN lobby created.");
     }
 
     private void HandleJoinLobby()
@@ -100,8 +135,9 @@ public class ThirteenMenuSceneController : MonoBehaviour
         string address = view.addressInput != null ? view.addressInput.text : "127.0.0.1";
         ThirteenSessionRuntime.Instance.ConfigureJoin(displayName, address, 7777, roomCode);
         ThirteenLobbyState lobby = multiplayerService.JoinLobby(displayName, roomCode, address, 7777);
-        ThirteenSessionRuntime.Instance.SetRoomCode(lobby.RoomCode);
-        ShowLobbyPanel(lobby, "Joined lobby.");
+        if (lobby != null)
+            ThirteenSessionRuntime.Instance.SetRoomCode(lobby.RoomCode);
+        ShowLobbyPanel(lobby, "Joining LAN lobby...");
     }
 
     private void HandleToggleReady()
@@ -128,6 +164,8 @@ public class ThirteenMenuSceneController : MonoBehaviour
     {
         multiplayerService.LeaveLobby();
         ThirteenSessionRuntime.Instance.ConfigureSolo();
+        lastLobbyRevision = multiplayerService.LobbyRevision;
+        lastStatusRevision = multiplayerService.StatusRevision;
         ShowMainPanel();
         UpdateStatus("Left the lobby.");
     }
@@ -194,9 +232,13 @@ public class ThirteenMenuSceneController : MonoBehaviour
 
         foreach (ThirteenLobbyPlayer player in lobby.Players)
         {
-            string status = player.IsPlaceholder
-                ? "Waiting"
-                : player.IsReady || player.IsHost ? "Ready" : "Not Ready";
+            string status;
+            if (player.IsBot)
+                status = "Bot";
+            else if (player.IsPlaceholder)
+                status = "Waiting";
+            else
+                status = player.IsReady || player.IsHost ? "Ready" : "Not Ready";
 
             builder.Append("- ");
             builder.Append(player.DisplayName);
