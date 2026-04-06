@@ -43,6 +43,7 @@ public class HorizontalCardHolder : MonoBehaviour
     private int handStartSlotIndex;
     private bool initialized;
     private bool turnActive;
+    private bool handInteractionEnabled = true;
     private bool hasDealPreview;
 
     public RectTransform PlayArea => playArea;
@@ -105,7 +106,7 @@ public class HorizontalCardHolder : MonoBehaviour
             card.SetReturning(false);
             card.SnapToLocal(Vector2.zero);
             card.SnapScale(Vector3.one);
-            card.SetInteractionEnabled(turnActive);
+            card.SetInteractionEnabled(handInteractionEnabled);
         }
 
         handStartSlotIndex = GetCenteredStartIndex(count);
@@ -244,13 +245,18 @@ public class HorizontalCardHolder : MonoBehaviour
     public void SetTurnActive(bool active)
     {
         turnActive = active;
+    }
+
+    public void SetHandInteractionEnabled(bool enabled)
+    {
+        handInteractionEnabled = enabled;
 
         foreach (Card card in cards)
         {
             if (card == null || !card.gameObject.activeSelf)
                 continue;
 
-            card.SetInteractionEnabled(active);
+            card.SetInteractionEnabled(enabled);
         }
     }
 
@@ -348,7 +354,7 @@ public class HorizontalCardHolder : MonoBehaviour
 
     private void OnBeginDrag(Card card)
     {
-        if (card == null || !turnActive)
+        if (card == null || !handInteractionEnabled)
             return;
 
         draggedCard = card;
@@ -441,7 +447,7 @@ public class HorizontalCardHolder : MonoBehaviour
 
     private void OnCardClicked(Card card)
     {
-        if (card == null || draggedCard != null || !turnActive)
+        if (card == null || draggedCard != null || !handInteractionEnabled)
             return;
 
         card.SetSelected(!card.IsSelected, true);
@@ -507,13 +513,13 @@ public class HorizontalCardHolder : MonoBehaviour
             card.SetSelected(false, false);
             card.SnapToLocal(Vector2.zero);
             card.SnapScale(Vector3.one);
-            card.SetInteractionEnabled(turnActive);
+            card.SetInteractionEnabled(handInteractionEnabled);
         }
     }
 
     private bool TryPlayDragGroup()
     {
-        if (playArea == null || draggedCard == null || activeDragGroup.Count == 0 || controller == null)
+        if (playArea == null || draggedCard == null || activeDragGroup.Count == 0 || controller == null || !turnActive)
             return false;
 
         Vector2 screenPoint = draggedCard.GetLastPointerScreenPosition();

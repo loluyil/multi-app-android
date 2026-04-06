@@ -77,16 +77,29 @@ public class ThirteenDeckDealer : MonoBehaviour
 
     private void Start()
     {
-        if (dealOnStart)
-            ShuffleAndDeal();
+        if (!dealOnStart)
+            return;
+
+        if (ThirteenSessionRuntime.Instance != null && ThirteenSessionRuntime.Instance.IsMultiplayer)
+            return; // ThirteenGameController will trigger the seeded deal for multiplayer.
+
+        ShuffleAndDeal();
     }
 
     public void ShuffleAndDeal()
     {
+        ShuffleAndDeal(null);
+    }
+
+    public void ShuffleAndDeal(int? seed)
+    {
         RebuildSpriteLookup();
 
         List<Card.CardData> deck = CreateDeck();
-        Shuffle(deck);
+        if (seed.HasValue)
+            SeededShuffle(deck, seed.Value);
+        else
+            Shuffle(deck);
 
         playerHand = SortHand(deck.Take(13).ToList());
         opponentHandA = SortHand(deck.Skip(13).Take(13).ToList());
@@ -97,6 +110,16 @@ public class ThirteenDeckDealer : MonoBehaviour
             StopCoroutine(dealCoroutine);
 
         dealCoroutine = StartCoroutine(DealAnimationCoroutine(deck));
+    }
+
+    private static void SeededShuffle<T>(IList<T> list, int seed)
+    {
+        System.Random rng = new System.Random(seed);
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(0, i + 1);
+            (list[i], list[j]) = (list[j], list[i]);
+        }
     }
 
     private IEnumerator DealAnimationCoroutine(List<Card.CardData> deck)

@@ -5,12 +5,18 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
+  - enabled: 1
     path: Assets/Scenes/MenuScene.unity
     guid: aa7248ff3afb9f94bbe317ca837fd9d5
   - enabled: 1
     path: Assets/Scenes/SudokuScene.unity
     guid: 105f1484288d6934aa631c1f54fa921d
+  - enabled: 1
+    path: Assets/Scenes/ThirteenMenuScreen.unity
+    guid: 94a729a30c8f63946b97ee1ab1f8d46b
+  - enabled: 1
+    path: Assets/Scenes/Thirteen.unity
+    guid: 793acc11395d45e48b43068413cbd3bd
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0
