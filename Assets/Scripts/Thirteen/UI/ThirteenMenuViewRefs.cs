@@ -28,7 +28,7 @@ public class ThirteenMenuViewRefs : MonoBehaviour
     [Header("Text")]
     public TMP_Text titleText;
     public TMP_Text subtitleText;
-    public TMP_Text lobbyCodeText;
+    public TMP_InputField lobbyCodeText;
     public TMP_Text lobbyPlayersText;
     public TMP_Text statusText;
 }

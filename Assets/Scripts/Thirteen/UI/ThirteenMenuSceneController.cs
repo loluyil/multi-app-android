@@ -16,6 +16,8 @@ public class ThirteenMenuSceneController : MonoBehaviour
         if (view == null)
             view = GetComponent<ThirteenMenuViewRefs>();
 
+        EnsureLobbyCodeInputIsConfigured();
+        EnsureMenuEffectsAreConfigured();
         multiplayerService = ThirteenMultiplayerServiceRegistry.GetService();
         ConfigureDefaultInputValues();
         WireButtons();
@@ -62,6 +64,8 @@ public class ThirteenMenuSceneController : MonoBehaviour
     public void SetView(ThirteenMenuViewRefs refs)
     {
         view = refs;
+        EnsureLobbyCodeInputIsConfigured();
+        EnsureMenuEffectsAreConfigured();
     }
 
     private void ConfigureDefaultInputValues()
@@ -78,6 +82,113 @@ public class ThirteenMenuSceneController : MonoBehaviour
 
         if (view.roomCodeInput != null && string.IsNullOrWhiteSpace(view.roomCodeInput.text))
             view.roomCodeInput.text = session.RoomCode;
+    }
+
+    private void EnsureLobbyCodeInputIsConfigured()
+    {
+        if (view == null)
+            return;
+
+        if (view.lobbyCodeText == null)
+            view.lobbyCodeText = ResolveLobbyCodeInput();
+
+        TMP_InputField input = view.lobbyCodeText;
+        if (input == null)
+            return;
+
+        RectTransform textArea = input.textViewport;
+        if (textArea == null)
+        {
+            Transform existingTextArea = input.transform.Find("Text Area");
+            textArea = existingTextArea as RectTransform;
+            if (textArea == null)
+            {
+                GameObject textAreaObject = new GameObject("Text Area", typeof(RectTransform));
+                textAreaObject.transform.SetParent(input.transform, false);
+                textArea = textAreaObject.GetComponent<RectTransform>();
+            }
+
+            ConfigureStretch(textArea, new Vector2(18f, 10f), new Vector2(-18f, -10f));
+            input.textViewport = textArea;
+        }
+        else
+        {
+            ConfigureStretch(textArea, new Vector2(18f, 10f), new Vector2(-18f, -10f));
+        }
+
+        TextMeshProUGUI text = input.textComponent as TextMeshProUGUI;
+        if (text == null)
+        {
+            Transform existingText = textArea.Find("Text");
+            GameObject textObject = existingText != null ? existingText.gameObject : new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            if (existingText == null)
+                textObject.transform.SetParent(textArea, false);
+
+            text = textObject.GetComponent<TextMeshProUGUI>();
+            text.fontSize = 24f;
+            text.fontStyle = FontStyles.Normal;
+            text.alignment = TextAlignmentOptions.Left;
+            text.color = Color.white;
+            ConfigureStretch(text.rectTransform, Vector2.zero, Vector2.zero);
+            input.textComponent = text;
+        }
+        else
+        {
+            ConfigureStretch(text.rectTransform, Vector2.zero, Vector2.zero);
+        }
+
+        if (input.placeholder == null)
+        {
+            Transform existingPlaceholder = textArea.Find("Placeholder");
+            GameObject placeholderObject = existingPlaceholder != null ? existingPlaceholder.gameObject : new GameObject("Placeholder", typeof(RectTransform), typeof(TextMeshProUGUI));
+            if (existingPlaceholder == null)
+                placeholderObject.transform.SetParent(textArea, false);
+
+            TextMeshProUGUI placeholder = placeholderObject.GetComponent<TextMeshProUGUI>();
+            placeholder.text = "Room Code";
+            placeholder.fontSize = 24f;
+            placeholder.fontStyle = FontStyles.Italic;
+            placeholder.alignment = TextAlignmentOptions.Left;
+            placeholder.color = new Color(1f, 1f, 1f, 0.45f);
+            ConfigureStretch(placeholder.rectTransform, Vector2.zero, Vector2.zero);
+            input.placeholder = placeholder;
+        }
+        input.lineType = TMP_InputField.LineType.SingleLine;
+        input.readOnly = true;
+        input.interactable = true;
+        input.caretColor = Color.white;
+        input.selectionColor = new Color(0.45f, 0.7f, 1f, 0.35f);
+    }
+
+    private TMP_InputField ResolveLobbyCodeInput()
+    {
+        if (view?.lobbyPanel == null)
+            return null;
+
+        Transform exact = view.lobbyPanel.transform.Find("LobbyStack/LobbyCodeText");
+        if (exact != null && exact.TryGetComponent(out TMP_InputField exactInput))
+            return exactInput;
+
+        return view.lobbyPanel.GetComponentInChildren<TMP_InputField>(true);
+    }
+
+    private void EnsureMenuEffectsAreConfigured()
+    {
+        if (view == null)
+            return;
+
+        EnsurePanelBackgroundDrag(view.mainPanel);
+        EnsurePanelBackgroundDrag(view.multiplayerPanel);
+        EnsurePanelBackgroundDrag(view.lobbyPanel);
+
+        AttachButtonPop(view.playSoloButton);
+        AttachButtonPop(view.openMultiplayerButton);
+        AttachButtonPop(view.hostButton);
+        AttachButtonPop(view.joinButton);
+        AttachButtonPop(view.backToMainButton);
+        AttachButtonPop(view.readyButton);
+        AttachButtonPop(view.startMatchButton);
+        AttachButtonPop(view.leaveLobbyButton);
     }
 
     private void WireButtons()
@@ -199,14 +310,14 @@ public class ThirteenMenuSceneController : MonoBehaviour
         if (lobby == null)
         {
             if (view.lobbyCodeText != null)
-                view.lobbyCodeText.text = "Room Code: ----";
+                view.lobbyCodeText.text = "----";
             if (view.lobbyPlayersText != null)
                 view.lobbyPlayersText.text = "No active lobby.";
             return;
         }
 
         if (view.lobbyCodeText != null)
-            view.lobbyCodeText.text = $"Room Code: {lobby.RoomCode}";
+            view.lobbyCodeText.text = $"{lobby.RoomCode}";
 
         if (view.lobbyPlayersText != null)
             view.lobbyPlayersText.text = BuildLobbyPlayerList(lobby);
@@ -305,5 +416,46 @@ public class ThirteenMenuSceneController : MonoBehaviour
         TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
         if (label != null)
             label.text = value;
+    }
+
+    private static void EnsurePanelBackgroundDrag(GameObject panel)
+    {
+        if (panel == null)
+            return;
+
+        Transform backgroundTransform = panel.transform.Find("Background");
+        if (backgroundTransform == null)
+            return;
+
+        Image image = GetOrAddComponent<Image>(backgroundTransform.gameObject);
+        image.raycastTarget = true;
+        GetOrAddComponent<CanvasGroup>(backgroundTransform.gameObject);
+        GetOrAddComponent<ThirteenMenuDraggableCard>(backgroundTransform.gameObject);
+    }
+
+    private static void AttachButtonPop(Button button)
+    {
+        if (button == null)
+            return;
+
+        GetOrAddComponent<ThirteenMenuButtonPop>(button.gameObject);
+    }
+
+    private static T GetOrAddComponent<T>(GameObject gameObject) where T : Component
+    {
+        T component = gameObject.GetComponent<T>();
+        return component != null ? component : gameObject.AddComponent<T>();
+    }
+
+    private static void ConfigureStretch(RectTransform rectTransform, Vector2 offsetMin, Vector2 offsetMax)
+    {
+        if (rectTransform == null)
+            return;
+
+        rectTransform.anchorMin = Vector2.zero;
+        rectTransform.anchorMax = Vector2.one;
+        rectTransform.offsetMin = offsetMin;
+        rectTransform.offsetMax = offsetMax;
+        rectTransform.localScale = Vector3.one;
     }
 }

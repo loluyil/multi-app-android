@@ -33,11 +33,6 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
         RectTransform content = GetOrCreatePanel(safeArea, "Content", stretch: false);
         SetAnchors(content, new Vector2(0.08f, 0.08f), new Vector2(0.92f, 0.74f), Vector2.zero, Vector2.zero);
 
-        viewRefs.titleText = GetOrCreateText(header, "Title", "THIRTEEN", 48, FontStyles.Bold);
-        viewRefs.subtitleText = GetOrCreateText(header, "Subtitle", "Solo stays simple. Multiplayer gets its own flow.", 20, FontStyles.Normal);
-        SetAnchors(viewRefs.titleText.rectTransform, new Vector2(0f, 0.45f), new Vector2(1f, 1f), new Vector2(20f, -8f), new Vector2(-20f, -8f));
-        SetAnchors(viewRefs.subtitleText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0.45f), new Vector2(20f, 8f), new Vector2(-20f, 8f));
-
         viewRefs.mainPanel = GetOrCreatePanel(content, "MainPanel", stretch: true).gameObject;
         viewRefs.multiplayerPanel = GetOrCreatePanel(content, "MultiplayerPanel", stretch: true).gameObject;
         viewRefs.lobbyPanel = GetOrCreatePanel(content, "LobbyPanel", stretch: true).gameObject;
@@ -62,6 +57,7 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
         Image background = GetOrCreateImage(panel, "Background");
         background.color = new Color(0.08f, 0.12f, 0.18f, 0.92f);
         SetAnchors(background.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        GetOrAddComponent<ThirteenMenuDraggableCard>(background.gameObject);
 
         RectTransform stack = GetOrCreatePanel(panel, "ButtonStack", stretch: false);
         SetAnchors(stack, new Vector2(0.2f, 0.18f), new Vector2(0.8f, 0.82f), Vector2.zero, Vector2.zero);
@@ -76,6 +72,7 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
         Image background = GetOrCreateImage(panel, "Background");
         background.color = new Color(0.1f, 0.16f, 0.22f, 0.92f);
         SetAnchors(background.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        GetOrAddComponent<ThirteenMenuDraggableCard>(background.gameObject);
 
         RectTransform stack = GetOrCreatePanel(panel, "MultiplayerStack", stretch: false);
         SetAnchors(stack, new Vector2(0.16f, 0.12f), new Vector2(0.84f, 0.88f), Vector2.zero, Vector2.zero);
@@ -94,12 +91,17 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
         Image background = GetOrCreateImage(panel, "Background");
         background.color = new Color(0.06f, 0.14f, 0.14f, 0.94f);
         SetAnchors(background.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        GetOrAddComponent<ThirteenMenuDraggableCard>(background.gameObject);
 
         RectTransform stack = GetOrCreatePanel(panel, "LobbyStack", stretch: false);
         SetAnchors(stack, new Vector2(0.12f, 0.1f), new Vector2(0.88f, 0.9f), Vector2.zero, Vector2.zero);
         EnsureVerticalLayout(stack, 18f, new RectOffset(22, 22, 22, 22));
 
-        viewRefs.lobbyCodeText = GetOrCreateText(stack, "LobbyCodeText", "Room Code: ----", 26, FontStyles.Bold);
+        viewRefs.lobbyCodeText = GetOrCreateInputField(stack, "LobbyCodeText", "Room Code");
+        viewRefs.lobbyCodeText.text = "----";
+        viewRefs.lobbyCodeText.readOnly = true;
+        viewRefs.lobbyCodeText.interactable = true;
+        viewRefs.lobbyCodeText.caretPosition = 0;
         viewRefs.lobbyPlayersText = GetOrCreateText(stack, "LobbyPlayersText", "Lobby Players", 20, FontStyles.Normal);
         LayoutElement playersLayout = viewRefs.lobbyPlayersText.GetComponent<LayoutElement>();
         if (playersLayout == null)
@@ -162,7 +164,7 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
         if (existing == null)
             textObject.transform.SetParent(parent, false);
 
-        TMP_Text text = textObject.GetComponent<TMP_Text>();
+        TMP_Text text = GetOrAddComponent<TextMeshProUGUI>(textObject);
         text.text = value;
         text.fontSize = fontSize;
         text.fontStyle = style;
@@ -178,7 +180,7 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
         if (existing == null)
             imageObject.transform.SetParent(parent, false);
 
-        return imageObject.GetComponent<Image>();
+        return GetOrAddComponent<Image>(imageObject);
     }
 
     private static Button GetOrCreateButton(Transform parent, string objectName, string label)
@@ -188,10 +190,10 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
         if (existing == null)
             buttonObject.transform.SetParent(parent, false);
 
-        Image image = buttonObject.GetComponent<Image>();
+        Image image = GetOrAddComponent<Image>(buttonObject);
         image.color = new Color(0.19f, 0.31f, 0.46f, 1f);
 
-        LayoutElement layout = buttonObject.GetComponent<LayoutElement>();
+        LayoutElement layout = GetOrAddComponent<LayoutElement>(buttonObject);
         layout.preferredHeight = 80f;
 
         Transform labelTransform = buttonObject.transform.Find("Label");
@@ -199,14 +201,15 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
         if (labelTransform == null)
             labelObject.transform.SetParent(buttonObject.transform, false);
 
-        TMP_Text text = labelObject.GetComponent<TMP_Text>();
+        TMP_Text text = GetOrAddComponent<TextMeshProUGUI>(labelObject);
         text.text = label;
         text.fontSize = 28f;
         text.alignment = TextAlignmentOptions.Center;
         text.color = Color.white;
         SetAnchors(text.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
-        return buttonObject.GetComponent<Button>();
+        GetOrAddComponent<ThirteenMenuButtonPop>(buttonObject);
+        return GetOrAddComponent<Button>(buttonObject);
     }
 
     private static TMP_InputField GetOrCreateInputField(Transform parent, string objectName, string placeholder)
@@ -216,10 +219,10 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
         if (existing == null)
             inputObject.transform.SetParent(parent, false);
 
-        Image image = inputObject.GetComponent<Image>();
+        Image image = GetOrAddComponent<Image>(inputObject);
         image.color = new Color(0.12f, 0.18f, 0.26f, 0.98f);
 
-        LayoutElement layout = inputObject.GetComponent<LayoutElement>();
+        LayoutElement layout = GetOrAddComponent<LayoutElement>(inputObject);
         layout.preferredHeight = 72f;
 
         RectTransform textArea = GetOrCreatePanel(inputObject.transform, "Text Area", stretch: true);
@@ -235,7 +238,7 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
         placeholderText.color = new Color(1f, 1f, 1f, 0.45f);
         SetAnchors(placeholderText.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
-        TMP_InputField inputField = inputObject.GetComponent<TMP_InputField>();
+        TMP_InputField inputField = GetOrAddComponent<TMP_InputField>(inputObject);
         inputField.textViewport = textArea;
         inputField.textComponent = text as TextMeshProUGUI;
         inputField.placeholder = placeholderText;
@@ -243,6 +246,12 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
         inputField.caretColor = Color.white;
         inputField.selectionColor = new Color(0.45f, 0.7f, 1f, 0.35f);
         return inputField;
+    }
+
+    private static T GetOrAddComponent<T>(GameObject gameObject) where T : Component
+    {
+        T component = gameObject.GetComponent<T>();
+        return component != null ? component : gameObject.AddComponent<T>();
     }
 
     private static void EnsureVerticalLayout(RectTransform rectTransform, float spacing, RectOffset padding)
