@@ -35,6 +35,7 @@ public class ThirteenLanMultiplayerService : IThirteenMultiplayerService
     private bool isHost;
     private bool shuttingDown;
     private bool matchStartRequested;
+    private bool matchHasStarted;
     private int lobbyRevision;
     private int matchDataRevision;
     private string lastStatus = string.Empty;
@@ -134,6 +135,7 @@ public class ThirteenLanMultiplayerService : IThirteenMultiplayerService
             };
             RefreshCanStartMatchLocked();
             lobbyRevision++;
+            matchHasStarted = false;
         }
 
         listener = new TcpListener(IPAddress.Any, port);
@@ -216,6 +218,7 @@ public class ThirteenLanMultiplayerService : IThirteenMultiplayerService
             FillEmptySeatsWithBotsLocked();
             startProperties = BuildStartPropertiesLocked();
             ApplyMatchPropertiesLocked(startProperties);
+            matchHasStarted = true;
             matchStartRequested = true;
             writers = hostConnections
                 .Where(connection => connection?.Writer != null)
@@ -263,6 +266,7 @@ public class ThirteenLanMultiplayerService : IThirteenMultiplayerService
         lock (syncRoot)
         {
             matchStartRequested = false;
+            matchHasStarted = false;
             currentLobby = null;
             hostConnections.Clear();
             matchProperties.Clear();
@@ -376,6 +380,12 @@ public class ThirteenLanMultiplayerService : IThirteenMultiplayerService
 
             lock (syncRoot)
             {
+                if (matchHasStarted)
+                {
+                    RejectConnection(connection, "Match already started.");
+                    return;
+                }
+
                 if (currentLobby == null || currentLobby.Players.Count >= currentLobby.MaxPlayers)
                 {
                     RejectConnection(connection, "Lobby is full.");
@@ -579,7 +589,9 @@ public class ThirteenLanMultiplayerService : IThirteenMultiplayerService
     private void RemoveConnection(HostConnection connection)
     {
         bool removed = false;
+        bool replacedWithBot = false;
         string removedName = connection.DisplayName;
+        Dictionary<string, string> replacementProperties = null;
 
         lock (syncRoot)
         {
@@ -589,15 +601,33 @@ public class ThirteenLanMultiplayerService : IThirteenMultiplayerService
             hostConnections.Remove(connection);
             if (currentLobby != null)
             {
-                ThirteenLobbyPlayer player = currentLobby.Players.FirstOrDefault(item => item.Id == connection.PlayerId);
-                if (player != null)
+                int playerIndex = currentLobby.Players.FindIndex(item => item.Id == connection.PlayerId);
+                if (playerIndex >= 0)
                 {
-                    currentLobby.Players.Remove(player);
-                    removed = true;
+                    if (matchHasStarted)
+                    {
+                        currentLobby.Players[playerIndex] = CreateBotPlayerForSeat(playerIndex);
+                        replacedWithBot = true;
+                    }
+                    else
+                    {
+                        currentLobby.Players.RemoveAt(playerIndex);
+                        removed = true;
+                    }
                 }
 
+                playerActions.Remove(connection.PlayerId);
                 RefreshCanStartMatchLocked();
                 lobbyRevision++;
+
+                if (replacedWithBot)
+                {
+                    replacementProperties = new Dictionary<string, string>
+                    {
+                        ["seats"] = BuildSeatAssignmentsLocked()
+                    };
+                    ApplyMatchPropertiesLocked(replacementProperties);
+                }
             }
         }
 
@@ -605,7 +635,13 @@ public class ThirteenLanMultiplayerService : IThirteenMultiplayerService
         TryClose(ref connection.Writer);
         TryClose(ref connection.Client);
 
-        if (removed)
+        if (replacedWithBot)
+        {
+            BroadcastLobbyState();
+            PublishMatchPropertiesToConnections(replacementProperties);
+            SetStatus($"{removedName} disconnected and was replaced by a CPU.");
+        }
+        else if (removed)
         {
             BroadcastLobbyState();
             SetStatus($"{removedName} left the lobby.");
@@ -805,26 +841,10 @@ public class ThirteenLanMultiplayerService : IThirteenMultiplayerService
         if (!isHost || properties == null || properties.Count == 0)
             return;
 
-        List<StreamWriter> writers;
         Dictionary<string, string> copied = properties.ToDictionary(pair => pair.Key, pair => pair.Value ?? string.Empty);
         lock (syncRoot)
-        {
             ApplyMatchPropertiesLocked(copied);
-            writers = hostConnections
-                .Where(connection => connection?.Writer != null)
-                .Select(connection => connection.Writer)
-                .ToList();
-        }
-
-        ThirteenLanMessage message = new ThirteenLanMessage
-        {
-            Type = "match_update",
-            RoomCode = roomCode
-        };
-        SetProperties(message, copied);
-
-        foreach (StreamWriter writer in writers)
-            WriteMessage(writer, message);
+        PublishMatchPropertiesToConnections(copied);
     }
 
     public void SubmitPlayerAction(string value)
@@ -859,20 +879,9 @@ public class ThirteenLanMultiplayerService : IThirteenMultiplayerService
         if (currentLobby == null)
             return;
 
-        int botIndex = 1;
         currentLobby.Players.RemoveAll(player => player != null && player.IsBot);
         while (currentLobby.Players.Count < currentLobby.MaxPlayers)
-        {
-            currentLobby.Players.Add(new ThirteenLobbyPlayer
-            {
-                Id = $"bot-{botIndex}",
-                DisplayName = $"CPU {botIndex}",
-                IsBot = true,
-                IsReady = true,
-                IsConnected = true
-            });
-            botIndex++;
-        }
+            currentLobby.Players.Add(CreateBotPlayerForSeat(currentLobby.Players.Count));
 
         lobbyRevision++;
     }
@@ -882,6 +891,17 @@ public class ThirteenLanMultiplayerService : IThirteenMultiplayerService
         Dictionary<string, string> properties = new Dictionary<string, string>();
         int seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
         int startSeat = UnityEngine.Random.Range(0, 4);
+
+        properties["seed"] = seed.ToString();
+        properties["start"] = startSeat.ToString();
+        properties["seats"] = BuildSeatAssignmentsLocked();
+        return properties;
+    }
+
+    private string BuildSeatAssignmentsLocked()
+    {
+        if (currentLobby == null)
+            return string.Empty;
 
         List<string> seatEntries = new List<string>(currentLobby.Players.Count);
         for (int seat = 0; seat < currentLobby.Players.Count; seat++)
@@ -893,10 +913,20 @@ public class ThirteenLanMultiplayerService : IThirteenMultiplayerService
             seatEntries.Add($"{player.Id}:{seat}");
         }
 
-        properties["seed"] = seed.ToString();
-        properties["start"] = startSeat.ToString();
-        properties["seats"] = string.Join(",", seatEntries);
-        return properties;
+        return string.Join(",", seatEntries);
+    }
+
+    private ThirteenLobbyPlayer CreateBotPlayerForSeat(int seat)
+    {
+        int cpuNumber = seat + 1;
+        return new ThirteenLobbyPlayer
+        {
+            Id = $"bot-seat-{seat}",
+            DisplayName = $"CPU {cpuNumber}",
+            IsBot = true,
+            IsReady = true,
+            IsConnected = true
+        };
     }
 
     private void ApplyMatchPropertiesLocked(IReadOnlyDictionary<string, string> properties)
@@ -941,5 +971,30 @@ public class ThirteenLanMultiplayerService : IThirteenMultiplayerService
         }
 
         return properties;
+    }
+
+    private void PublishMatchPropertiesToConnections(IReadOnlyDictionary<string, string> properties)
+    {
+        if (properties == null || properties.Count == 0)
+            return;
+
+        List<StreamWriter> writers;
+        lock (syncRoot)
+        {
+            writers = hostConnections
+                .Where(connection => connection?.Writer != null)
+                .Select(connection => connection.Writer)
+                .ToList();
+        }
+
+        ThirteenLanMessage message = new ThirteenLanMessage
+        {
+            Type = "match_update",
+            RoomCode = roomCode
+        };
+        SetProperties(message, properties);
+
+        foreach (StreamWriter writer in writers)
+            WriteMessage(writer, message);
     }
 }

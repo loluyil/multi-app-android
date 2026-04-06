@@ -35,11 +35,11 @@ public class ThirteenGameController : MonoBehaviour
     private IThirteenMultiplayerService mpService;
     private bool isMultiplayer;
     private bool isHost;
-    private int lastAppliedMv;
-    private int committedMv;
     private int localActionSeq;
     private int pendingSelfBroadcasts;
     private int lastSeenMatchRevision = -1;
+    private int appliedMoveLogCount;
+    private string lastSeenSeatsCsv = string.Empty;
     private readonly Dictionary<string, int> remoteLastSeenSeq = new Dictionary<string, int>();
     private readonly Dictionary<int, string> seatToPlayerId = new Dictionary<int, string>();
     private readonly Dictionary<string, int> playerIdToSeat = new Dictionary<string, int>();
@@ -95,7 +95,8 @@ public class ThirteenGameController : MonoBehaviour
             }
 
             isHost = mpService.IsHost;
-            ParseSeatAssignments(mpService.GetMatchProperty("seats"));
+            lastSeenSeatsCsv = mpService.GetMatchProperty("seats") ?? string.Empty;
+            ParseSeatAssignments(lastSeenSeatsCsv);
             if (!playerIdToSeat.TryGetValue(mpService.LocalPlayerId ?? string.Empty, out int mySeat))
                 mySeat = 0;
             localPlayerSeat = mySeat;
@@ -133,7 +134,7 @@ public class ThirteenGameController : MonoBehaviour
         if (isHost)
             ProcessRemoteActionsAsHost();
 
-        ProcessIncomingBroadcast();
+        ProcessMatchPropertyUpdates();
     }
 
     private void ParseSeatAssignments(string csv)
@@ -250,11 +251,13 @@ public class ThirteenGameController : MonoBehaviour
             localHandHolder.CompleteDealPreview(seatHands[localPlayerSeat], deckDealer.SpriteLookup);
         else
             localHandHolder.SetHand(seatHands[localPlayerSeat], deckDealer.SpriteLookup);
+        localHandHolder.SetHandInteractionEnabled(true);
         localHandHolder.ClearPlayArea();
         localHandHolder.ClearSelection();
 
         matchState = new ThirteenMatchState(startingSeat, enforceTurnOrder: !allowOutOfTurnTesting);
         gameOver = false;
+        appliedMoveLogCount = 0;
 
         RefreshOpponentVisuals();
         UpdateTurnState();
@@ -433,6 +436,7 @@ public class ThirteenGameController : MonoBehaviour
         if (passButton != null)
             passButton.interactable = canPass;
 
+        localHandHolder.SetHandInteractionEnabled(true);
         localHandHolder.SetTurnActive(allowOutOfTurnTesting || isLocalTurn);
         Debug.Log($"[Thirteen] Turn: Seat {currentSeat}");
 
@@ -725,6 +729,7 @@ public class ThirteenGameController : MonoBehaviour
             passButton.interactable = false;
 
         localHandHolder.SetTurnActive(false);
+        localHandHolder.SetHandInteractionEnabled(false);
         Debug.Log($"[Thirteen] Game over. Winner: Seat {winnerSeat}");
     }
 
@@ -742,37 +747,43 @@ public class ThirteenGameController : MonoBehaviour
         if (mpService == null || !isHost)
             return;
 
-        committedMv++;
-        lastAppliedMv = committedMv; // Prevent our own broadcast handler from reprocessing.
-        mpService.PublishMatchProperties(new Dictionary<string, string>
-        {
-            ["mv"] = committedMv.ToString(),
-            ["mvd"] = moveData
-        });
+        string existingLog = mpService.GetMatchProperty("move_log");
+        string nextLog = string.IsNullOrEmpty(existingLog) ? moveData : $"{existingLog};{moveData}";
+        appliedMoveLogCount = CountMoveLogEntries(nextLog);
+        mpService.PublishMatchProperty("move_log", nextLog);
     }
 
-    private void ProcessIncomingBroadcast()
+    private void ProcessMatchPropertyUpdates()
     {
-        string mvStr = mpService.GetMatchProperty("mv");
-        if (string.IsNullOrEmpty(mvStr) || !int.TryParse(mvStr, out int mv))
-            return;
-
-        if (mv <= lastAppliedMv)
-            return;
-
-        string mvd = mpService.GetMatchProperty("mvd");
-        if (string.IsNullOrEmpty(mvd))
-            return;
-
-        if (!TryParseMove(mvd, out int seat, out bool isPass, out List<Card.CardData> cards))
+        string latestSeatsCsv = mpService.GetMatchProperty("seats") ?? string.Empty;
+        if (!string.Equals(latestSeatsCsv, lastSeenSeatsCsv))
         {
-            Debug.LogWarning($"[Thirteen] Could not parse broadcast move '{mvd}'.");
-            lastAppliedMv = mv;
-            return;
+            lastSeenSeatsCsv = latestSeatsCsv;
+            ParseSeatAssignments(latestSeatsCsv);
+            RefreshOpponentVisuals();
+            UpdateTurnState();
         }
 
-        lastAppliedMv = mv;
-        ApplyConfirmedMove(seat, isPass, cards);
+        string moveLog = mpService.GetMatchProperty("move_log");
+        if (string.IsNullOrEmpty(moveLog))
+            return;
+
+        string[] entries = moveLog.Split(';');
+        while (appliedMoveLogCount < entries.Length)
+        {
+            string entry = entries[appliedMoveLogCount];
+            appliedMoveLogCount++;
+            if (string.IsNullOrWhiteSpace(entry))
+                continue;
+
+            if (!TryParseMove(entry, out int seat, out bool isPass, out List<Card.CardData> cards))
+            {
+                Debug.LogWarning($"[Thirteen] Could not parse broadcast move '{entry}'.");
+                continue;
+            }
+
+            ApplyConfirmedMove(seat, isPass, cards);
+        }
     }
 
     private void ApplyConfirmedMove(int seat, bool isPass, List<Card.CardData> cards)
@@ -975,5 +986,13 @@ public class ThirteenGameController : MonoBehaviour
             case 'H': suit = Card.Suit.Hearts; return true;
             default: suit = Card.Suit.Spades; return false;
         }
+    }
+
+    private static int CountMoveLogEntries(string moveLog)
+    {
+        if (string.IsNullOrWhiteSpace(moveLog))
+            return 0;
+
+        return moveLog.Split(';').Count(entry => !string.IsNullOrWhiteSpace(entry));
     }
 }
