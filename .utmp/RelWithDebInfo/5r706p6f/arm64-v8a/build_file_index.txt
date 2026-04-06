@@ -1,3 +1,0 @@
-E:\Unity\UnityProjects\1-Sudoku\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\CMakeLists.txt
-E:\Unity\UnityProjects\1-Sudoku\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\FramePacing\CMakeLists.txt
-E:\Unity\UnityProjects\1-Sudoku\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\GameActivity\CMakeLists.txt
