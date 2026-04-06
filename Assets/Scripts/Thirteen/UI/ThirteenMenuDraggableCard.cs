@@ -90,7 +90,7 @@ public class ThirteenMenuDraggableCard : MonoBehaviour, IBeginDragHandler, IDrag
         originalSiblingIndex = rectTransform.GetSiblingIndex();
         rectTransform.SetAsLastSibling();
         canvasGroup.blocksRaycasts = false;
-        scaleTween = rectTransform.DOScale(initialLocalScale * dragScale, dragDuration).SetEase(dragEase);
+        scaleTween = rectTransform.DOScale(originalLocalScale * dragScale, dragDuration).SetEase(dragEase);
     }
 
     public void OnDrag(PointerEventData eventData)
@@ -113,7 +113,7 @@ public class ThirteenMenuDraggableCard : MonoBehaviour, IBeginDragHandler, IDrag
 
         KillTweens();
         moveTween = rectTransform.DOLocalMove(initialLocalPosition, returnDuration).SetEase(returnEase);
-        scaleTween = rectTransform.DOScale(initialLocalScale, returnDuration).SetEase(returnEase);
+        scaleTween = rectTransform.DOScale(originalLocalScale, returnDuration).SetEase(returnEase);
     }
 
     private void CacheRestState()
