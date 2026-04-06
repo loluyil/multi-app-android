@@ -3628,7 +3628,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetSceneName: MenuScene
-  holdDuration: 1.5
+  holdDuration: 0.75
 --- !u!114 &1433126570
 MonoBehaviour:
   m_ObjectHideFlags: 0

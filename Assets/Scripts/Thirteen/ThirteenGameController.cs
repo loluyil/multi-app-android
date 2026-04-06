@@ -5,7 +5,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using DG.Tweening;
 using TMPro;
-using UnityEngine.SceneManagement;
 
 public class ThirteenGameController : MonoBehaviour
 {
@@ -246,7 +245,7 @@ public class ThirteenGameController : MonoBehaviour
 
     private void OnConfirmLeaveYesClicked()
     {
-        SceneManager.LoadScene(AppSceneNames.ThirteenMenu);
+        AppSceneLoader.Load(AppSceneNames.ThirteenMenu);
     }
 
     private void OnConfirmLeaveNoClicked()

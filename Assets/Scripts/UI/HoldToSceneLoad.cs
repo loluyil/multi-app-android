@@ -1,7 +1,6 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.SceneManagement;
 
 [DisallowMultipleComponent]
 public class HoldToSceneLoad : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
@@ -43,7 +42,7 @@ public class HoldToSceneLoad : MonoBehaviour, IPointerDownHandler, IPointerUpHan
         yield return new WaitForSecondsRealtime(holdDuration);
 
         if (!string.IsNullOrWhiteSpace(targetSceneName))
-            SceneManager.LoadScene(targetSceneName);
+            AppSceneLoader.Load(targetSceneName);
 
         holdCoroutine = null;
     }

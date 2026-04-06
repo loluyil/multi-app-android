@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement;
 using TMPro;
 
 public class MenuManager : MonoBehaviour
@@ -24,12 +23,12 @@ public class MenuManager : MonoBehaviour
 
     private void LoadSudokuScene()
     {
-        SceneManager.LoadScene(AppSceneNames.Sudoku);
+        AppSceneLoader.Load(AppSceneNames.Sudoku);
     }
 
     private void LoadThirteenMenuScene()
     {
-        SceneManager.LoadScene(AppSceneNames.ThirteenMenu);
+        AppSceneLoader.Load(AppSceneNames.ThirteenMenu);
     }
 
     private void WireSceneButton(Button button, UnityEngine.Events.UnityAction action)
