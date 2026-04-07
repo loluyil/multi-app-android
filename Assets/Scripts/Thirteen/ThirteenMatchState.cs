@@ -19,6 +19,7 @@ public class ThirteenMatchState
 
     private readonly bool[] passed = new bool[4];
     private readonly bool enforceTurnOrder;
+    private bool openingThreeOfSpadesRequired = true;
 
     public int CurrentTurnSeat { get; private set; }
     public int LeadingSeat { get; private set; } = -1;
@@ -47,12 +48,16 @@ public class ThirteenMatchState
         if (enforceTurnOrder && seat != CurrentTurnSeat)
             return Fail($"It is not seat {seat}'s turn.", analyzedHand);
 
+        if (openingThreeOfSpadesRequired && !ContainsThreeOfSpades(cards))
+            return Fail("The opening play must include the 3 of spades.", analyzedHand);
+
         if (!ThirteenRules.CanPlayOn(analyzedHand, CurrentHand, out string reason))
             return Fail(reason, analyzedHand);
 
         CurrentHand = analyzedHand;
         LeadingSeat = seat;
         CurrentTurnSeat = GetNextActiveSeat(seat);
+        openingThreeOfSpadesRequired = false;
 
         Debug.Log($"[Thirteen] Seat {seat} played {ThirteenRules.Describe(analyzedHand)}");
         return new PlayResult(true, "Play accepted.", analyzedHand);
@@ -172,5 +177,19 @@ public class ThirteenMatchState
     private static bool IsSeatValid(int seat)
     {
         return seat >= 0 && seat < 4;
+    }
+
+    private static bool ContainsThreeOfSpades(IReadOnlyList<Card.CardData> cards)
+    {
+        if (cards == null)
+            return false;
+
+        for (int i = 0; i < cards.Count; i++)
+        {
+            if (cards[i].rank == 3 && cards[i].suit == Card.Suit.Spades)
+                return true;
+        }
+
+        return false;
     }
 }

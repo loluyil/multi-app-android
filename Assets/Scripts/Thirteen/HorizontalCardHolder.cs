@@ -58,6 +58,7 @@ public class HorizontalCardHolder : MonoBehaviour
     private readonly List<RectTransform> slots = new List<RectTransform>();
     private readonly List<Card> activeDragGroup = new List<Card>();
     private readonly List<GameObject> dealPreviewCards = new List<GameObject>();
+    private readonly List<RectTransform> playAreaSlots = new List<RectTransform>();
 
     private ThirteenGameController controller;
     private RectTransform holderRect;
@@ -290,8 +291,30 @@ public class HorizontalCardHolder : MonoBehaviour
         if (playArea == null)
             return;
 
-        for (int i = playArea.childCount - 1; i >= 0; i--)
-            Destroy(playArea.GetChild(i).gameObject);
+        for (int i = 0; i < playAreaSlots.Count; i++)
+        {
+            RectTransform slot = playAreaSlots[i];
+            if (slot == null)
+                continue;
+
+            for (int childIndex = slot.childCount - 1; childIndex >= 0; childIndex--)
+            {
+                Transform child = slot.GetChild(childIndex);
+                if (child == null)
+                    continue;
+
+                Card childCard = child.GetComponent<Card>();
+                if (childCard != null && !childCard.enabled)
+                {
+                    child.gameObject.SetActive(false);
+                    continue;
+                }
+
+                Destroy(child.gameObject);
+            }
+
+            slot.gameObject.SetActive(false);
+        }
     }
 
     public void ClearSelection()
@@ -330,13 +353,14 @@ public class HorizontalCardHolder : MonoBehaviour
             return;
 
         List<Card.CardData> sortedCards = ThirteenRules.SortCards(playedCards);
-        List<RectTransform> targetSlots = CreatePlayAreaSlots(sortedCards.Count);
+        List<RectTransform> targetSlots = EnsurePlayAreaSlots(sortedCards.Count);
 
         for (int i = 0; i < sortedCards.Count && i < targetSlots.Count; i++)
         {
             Card.CardData data = sortedCards[i];
-            GameObject cardObject = Instantiate(cardPrefab, targetSlots[i]);
+            GameObject cardObject = GetOrCreateDisplayCard(targetSlots[i]);
             cardObject.name = $"Played_{data.SpriteKey}";
+            cardObject.SetActive(true);
 
             RectTransform rect = cardObject.GetComponent<RectTransform>();
             if (rect != null)
@@ -351,13 +375,27 @@ public class HorizontalCardHolder : MonoBehaviour
                 spriteLookup.TryGetValue(data.SpriteKey, out Sprite sprite);
                 card.SetCardData(data, sprite);
                 card.SetSelected(false, false);
+                card.SetReturning(false);
+                card.KillTweens();
+                card.SnapToLocal(Vector2.zero);
+                card.SnapScale(Vector3.one);
                 card.SetInteractionEnabled(false);
                 card.enabled = false;
             }
 
             Button button = cardObject.GetComponent<Button>();
             if (button != null)
+            {
+                button.enabled = true;
                 button.interactable = false;
+            }
+
+            Image rootImage = cardObject.GetComponent<Image>();
+            if (rootImage != null)
+            {
+                rootImage.enabled = true;
+                rootImage.color = Color.white;
+            }
         }
     }
 
@@ -397,14 +435,16 @@ public class HorizontalCardHolder : MonoBehaviour
         foreach (Card dragCard in activeDragGroup)
             cards.Remove(dragCard);
 
+        bool isMultiDrag = activeDragGroup.Count > 1;
         for (int i = 0; i < activeDragGroup.Count; i++)
         {
             Card dragCard = activeDragGroup[i];
             dragCard.KillTweens();
             dragCard.transform.SetParent(dragLayer, true);
             dragCard.ShowShadow(dragLayer, shadowOffset);
+            dragCard.SnapScale(Vector3.one);
 
-            if (dragCard == draggedCard)
+            if (dragCard == draggedCard && !isMultiDrag)
             {
                 dragCard.TweenScale(Vector3.one * dragScale, shiftDuration, dragScaleEase);
             }
@@ -635,7 +675,7 @@ public class HorizontalCardHolder : MonoBehaviour
             card.HideShadow();
         }
 
-        List<RectTransform> targetSlots = CreatePlayAreaSlots(validCards.Count);
+        List<RectTransform> targetSlots = EnsurePlayAreaSlots(validCards.Count);
         int completedCount = 0;
         int expectedCount = validCards.Count;
 
@@ -821,23 +861,86 @@ public class HorizontalCardHolder : MonoBehaviour
         }
     }
 
-    private List<RectTransform> CreatePlayAreaSlots(int count)
+    private List<RectTransform> EnsurePlayAreaSlots(int count)
     {
-        List<RectTransform> createdSlots = new List<RectTransform>(count);
+        List<RectTransform> activeSlots = new List<RectTransform>(count);
         if (playArea == null || slotPrefab == null)
-            return createdSlots;
+            return activeSlots;
 
-        for (int i = 0; i < count; i++)
+        while (playAreaSlots.Count < count)
         {
             GameObject slotObject = Instantiate(slotPrefab, playArea);
-            slotObject.name = $"PlayedSlot_{i}";
+            slotObject.name = $"PlayedSlot_{playAreaSlots.Count}";
             RectTransform slotRect = slotObject.GetComponent<RectTransform>();
-            createdSlots.Add(slotRect);
+            slotObject.SetActive(false);
+            playAreaSlots.Add(slotRect);
         }
 
-        Canvas.ForceUpdateCanvases();
+        for (int i = 0; i < playAreaSlots.Count; i++)
+        {
+            RectTransform slot = playAreaSlots[i];
+            if (slot == null)
+                continue;
+
+            bool isActive = i < count;
+            if (slot.gameObject.activeSelf != isActive)
+                slot.gameObject.SetActive(isActive);
+
+            if (!isActive)
+                continue;
+
+            slot.SetSiblingIndex(i);
+            activeSlots.Add(slot);
+        }
+
         LayoutRebuilder.ForceRebuildLayoutImmediate(playArea);
-        return createdSlots;
+        return activeSlots;
+    }
+
+    private GameObject GetOrCreateDisplayCard(RectTransform targetSlot)
+    {
+        if (targetSlot == null || cardPrefab == null)
+            return null;
+
+        for (int i = 0; i < targetSlot.childCount; i++)
+        {
+            Transform child = targetSlot.GetChild(i);
+            if (child == null)
+                continue;
+
+            Card existingCard = child.GetComponent<Card>();
+            if (existingCard != null && !existingCard.enabled)
+                return child.gameObject;
+        }
+
+        GameObject cardObject = Instantiate(cardPrefab, targetSlot);
+        Card card = cardObject.GetComponent<Card>();
+        if (card != null)
+        {
+            card.KillTweens();
+            card.SetSelected(false, false);
+            card.SetReturning(false);
+            card.SnapToLocal(Vector2.zero);
+            card.SnapScale(Vector3.one);
+            card.SetInteractionEnabled(false);
+            card.enabled = false;
+        }
+
+        Button button = cardObject.GetComponent<Button>();
+        if (button != null)
+        {
+            button.enabled = true;
+            button.interactable = false;
+        }
+
+        Image rootImage = cardObject.GetComponent<Image>();
+        if (rootImage != null)
+        {
+            rootImage.enabled = true;
+            rootImage.color = Color.white;
+        }
+
+        return cardObject;
     }
 
     private int GetCenteredStartIndex(int cardCount)

@@ -10,9 +10,3 @@ public enum ThirteenMultiplayerEntryMode
     Host = 1,
     Join = 2
 }
-
-public enum ThirteenMultiplayerTransportMode
-{
-    Lan = 0,
-    Mock = 1
-}

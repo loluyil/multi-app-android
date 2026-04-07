@@ -51,7 +51,7 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
         return CloneLobby();
     }
 
-    public ThirteenLobbyState JoinLobby(string displayName, string roomCode, string address, int port)
+    public ThirteenLobbyState JoinLobby(string displayName, string roomCode)
     {
         string normalizedRoomCode = string.IsNullOrWhiteSpace(roomCode) ? GenerateRoomCode() : roomCode.Trim().ToUpperInvariant();
         localPlayerId = Guid.NewGuid().ToString("N");
