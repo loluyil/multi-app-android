@@ -116,6 +116,13 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
         }
 
         Vector3 delta = currentWorldPosition - lastWorldPosition;
+        bool isMoving = delta.sqrMagnitude > 0.0001f;
+        if (!isDragging && !isReturning && !isMoving && Quaternion.Angle(rect.localRotation, Quaternion.identity) < 0.05f)
+        {
+            lastWorldPosition = currentWorldPosition;
+            return;
+        }
+
         float targetTiltX = Mathf.Clamp(-delta.y * verticalTiltFactor, -maxTiltX, maxTiltX);
         float targetTiltZ = Mathf.Clamp(-delta.x * horizontalTiltFactor, -maxTiltZ, maxTiltZ);
         Quaternion targetRotation = Quaternion.Euler(targetTiltX, 0f, targetTiltZ);
@@ -303,7 +310,12 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
         data = newData;
 
         if (artImage != null)
+        {
+            artImage.enabled = sprite != null;
             artImage.sprite = sprite;
+            artImage.color = Color.white;
+            artImage.preserveAspect = true;
+        }
 
         gameObject.name = $"{GetSuitSpriteName(newData.suit)}-{newData.rank}";
     }

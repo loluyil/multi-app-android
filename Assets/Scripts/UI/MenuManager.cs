@@ -42,7 +42,7 @@ public class MenuManager : MonoBehaviour
 
     private void AddPopToAllSceneButtons()
     {
-        Button[] buttons = GetComponentsInChildren<Button>(true);
+        Button[] buttons = FindObjectsByType<Button>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (Button button in buttons)
         {
             if (button == null)

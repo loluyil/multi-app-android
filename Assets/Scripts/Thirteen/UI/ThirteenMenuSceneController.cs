@@ -16,6 +16,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
         if (view == null)
             view = GetComponent<ThirteenMenuViewRefs>();
 
+        EnsureStatusTextIsConfigured();
         EnsureLobbyCodeInputIsConfigured();
         EnsureReturnHoldIsConfigured();
         EnsureMenuEffectsAreConfigured();
@@ -48,6 +49,10 @@ public class ThirteenMenuSceneController : MonoBehaviour
                 SetPanelState(mainActive: false, multiplayerActive: false, lobbyActive: true);
                 RefreshLobby(latestLobby);
             }
+            else if (view != null && view.lobbyPanel != null && view.lobbyPanel.activeSelf)
+            {
+                RefreshLobby(null);
+            }
         }
 
         if (multiplayerService.MatchStartRequested)
@@ -65,6 +70,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
     public void SetView(ThirteenMenuViewRefs refs)
     {
         view = refs;
+        EnsureStatusTextIsConfigured();
         EnsureLobbyCodeInputIsConfigured();
         EnsureMenuEffectsAreConfigured();
     }
@@ -78,11 +84,24 @@ public class ThirteenMenuSceneController : MonoBehaviour
         if (view.displayNameInput != null && string.IsNullOrWhiteSpace(view.displayNameInput.text))
             view.displayNameInput.text = session.DisplayName;
 
-        if (view.addressInput != null && string.IsNullOrWhiteSpace(view.addressInput.text))
-            view.addressInput.text = session.JoinAddress;
-
         if (view.roomCodeInput != null && string.IsNullOrWhiteSpace(view.roomCodeInput.text))
             view.roomCodeInput.text = session.RoomCode;
+    }
+
+    private void EnsureStatusTextIsConfigured()
+    {
+        if (view == null || view.statusText != null)
+            return;
+
+        TMP_Text[] texts = GetComponentsInChildren<TMP_Text>(true);
+        foreach (TMP_Text candidate in texts)
+        {
+            if (candidate != null && candidate.name == "StatusText")
+            {
+                view.statusText = candidate;
+                return;
+            }
+        }
     }
 
     private void EnsureLobbyCodeInputIsConfigured()
@@ -202,7 +221,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
         if (holdToSceneLoad == null)
             holdToSceneLoad = returnPanel.gameObject.AddComponent<HoldToSceneLoad>();
 
-        holdToSceneLoad.Configure(AppSceneNames.MainMenu, 2.25f);
+        holdToSceneLoad.Configure(AppSceneNames.MainMenu);
     }
 
     private void WireButtons()
@@ -250,19 +269,18 @@ public class ThirteenMenuSceneController : MonoBehaviour
         ThirteenLobbyState lobby = multiplayerService.HostLobby(displayName);
         if (lobby != null)
             ThirteenSessionRuntime.Instance.SetRoomCode(lobby.RoomCode);
-        ShowLobbyPanel(lobby, "LAN lobby created.");
+        ShowLobbyPanel(lobby, "Creating lobby...");
     }
 
     private void HandleJoinLobby()
     {
         string displayName = GetDisplayName();
         string roomCode = view.roomCodeInput != null ? view.roomCodeInput.text : string.Empty;
-        string address = view.addressInput != null ? view.addressInput.text : "127.0.0.1";
-        ThirteenSessionRuntime.Instance.ConfigureJoin(displayName, address, 7777, roomCode);
-        ThirteenLobbyState lobby = multiplayerService.JoinLobby(displayName, roomCode, address, 7777);
+        ThirteenSessionRuntime.Instance.ConfigureJoin(displayName, roomCode);
+        ThirteenLobbyState lobby = multiplayerService.JoinLobby(displayName, roomCode);
         if (lobby != null)
             ThirteenSessionRuntime.Instance.SetRoomCode(lobby.RoomCode);
-        ShowLobbyPanel(lobby, "Joining LAN lobby...");
+        ShowLobbyPanel(lobby, "Joining lobby...");
     }
 
     private void HandleToggleReady()
@@ -323,15 +341,13 @@ public class ThirteenMenuSceneController : MonoBehaviour
 
         if (lobby == null)
         {
-            if (view.lobbyCodeText != null)
-                view.lobbyCodeText.text = "----";
+            SetLobbyCodeDisplay("----");
             if (view.lobbyPlayersText != null)
                 view.lobbyPlayersText.text = "No active lobby.";
             return;
         }
 
-        if (view.lobbyCodeText != null)
-            view.lobbyCodeText.text = $"{lobby.RoomCode}";
+        SetLobbyCodeDisplay(lobby.RoomCode);
 
         if (view.lobbyPlayersText != null)
             view.lobbyPlayersText.text = BuildLobbyPlayerList(lobby);
@@ -394,7 +410,33 @@ public class ThirteenMenuSceneController : MonoBehaviour
     private void UpdateStatus(string message)
     {
         if (view != null && view.statusText != null)
+        {
             view.statusText.text = message;
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(message))
+            Debug.Log($"[ThirteenMenu] {message}");
+    }
+
+    private void SetLobbyCodeDisplay(string roomCode)
+    {
+        TMP_InputField input = view != null ? view.lobbyCodeText : null;
+        if (input == null)
+            return;
+
+        string displayValue = string.IsNullOrWhiteSpace(roomCode)
+            ? "----"
+            : roomCode.Trim().ToUpperInvariant();
+
+        input.SetTextWithoutNotify(displayValue);
+        input.ForceLabelUpdate();
+
+        if (input.textComponent != null)
+        {
+            input.textComponent.text = displayValue;
+            input.textComponent.ForceMeshUpdate();
+        }
     }
 
     private void SetPanelState(bool mainActive, bool multiplayerActive, bool lobbyActive)

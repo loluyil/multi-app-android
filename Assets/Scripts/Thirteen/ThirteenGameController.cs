@@ -13,9 +13,28 @@ public class ThirteenGameController : MonoBehaviour
     [SerializeField] private HorizontalCardHolder localHandHolder;
     [SerializeField] private Button passButton;
     [SerializeField] private Button leaveButton;
+    [SerializeField] private Button rematchButton;
     [SerializeField] private Button confirmLeaveYesButton;
     [SerializeField] private Button confirmLeaveNoButton;
     [SerializeField] private TMP_Text leavePromptText;
+
+    [Header("Game UI Text")]
+    [SerializeField] private TMP_Text turnPhaseText;
+    [SerializeField] private TMP_Text playedCardText;
+    [SerializeField] private TMP_Text commentaryText;
+    [SerializeField] private float commentaryLetterDelay = 0.03f;
+
+    // Inline templates for turn phase / played card / win text.
+    // (The ThirteenCommentaryStrings file only holds the random commentary pools now.)
+    private const string LocalTurnTemplate = "your turn";
+    private const string RemoteTurnTemplate = "{player}'s turn";
+    private const string LocalPassedTemplate = "you passed";
+    private const string RemotePassedTemplate = "{player} passed";
+    private const string LocalWonTemplate = "you win!";
+    private const string RemoteWonTemplate = "{player} wins";
+    private const string PlayedCardTemplate = "{cards}";
+
+    private Coroutine commentaryTypeCoroutine;
 
     [Header("Match")]
     [SerializeField] private int localPlayerSeat = 0;
@@ -30,6 +49,50 @@ public class ThirteenGameController : MonoBehaviour
     [SerializeField] private float botTweenDuration = 0.35f;
     [SerializeField] private Ease botTweenEase = Ease.OutCubic;
     [SerializeField] private float botCardSpacing = 42f;
+
+    [Header("Screen Shake")]
+    [Tooltip("Transform that gets shaken on dramatic plays. If null, the root canvas transform is used.")]
+    [SerializeField] private Transform shakeTarget;
+    [Tooltip("Maximum pixel displacement when computed strength == 1.")]
+    [SerializeField] private float shakeBasePixels = 8f;
+    [Tooltip("Duration of a shake burst, in seconds.")]
+    [SerializeField] private float shakeDuration = 0.35f;
+    [Tooltip("Strength value that reaches the max duration multiplier.")]
+    [SerializeField] private float shakeDurationMaxStrength = 6f;
+    [Tooltip("Maximum duration multiplier applied to stronger shakes.")]
+    [SerializeField] private float shakeDurationStrengthMultiplier = 1.75f;
+    [Tooltip("Global multiplier on the final computed strength.")]
+    [SerializeField] private float shakeStrengthMultiplier = 1f;
+
+    [Header("Screen Shake – Singles / Pairs (A/2 only)")]
+    [Tooltip("Base strength when a single Ace or 2 is played. Ranks 3-10 and J/Q/K never shake as singles.")]
+    [SerializeField] private float shakeSingleAceTwoBase = 0.3f;
+    [Tooltip("Base strength when a pair of Aces or 2s is played. Pairs 3-K never shake.")]
+    [SerializeField] private float shakePairAceTwoBase = 0.5f;
+    [Tooltip("Added to A/2 single & pair strength per previous play in the trick (the more it's been beaten, the harder the shake).")]
+    [SerializeField] private float shakeBeatGrowth = 0.4f;
+
+    [Header("Screen Shake – Triples")]
+    [Tooltip("Per-triple strength. Total strength = shakeTripleBase * (number of triples played so far in this trick, including this one). 4th triple shakes ~4x as hard as the 1st.")]
+    [SerializeField] private float shakeTripleBase = 0.25f;
+
+    [Header("Screen Shake – 4oK / Chops / Runs of 5+")]
+    [Tooltip("Base strength when a 4-of-a-kind is played fresh.")]
+    [SerializeField] private float shakeFourOfAKindBase = 1f;
+    [Tooltip("Base strength when a pair sequence (chop) is played fresh.")]
+    [SerializeField] private float shakeChopBase = 1f;
+    [Tooltip("Base strength when a run of 5+ cards is played fresh. Runs of 3-4 cards never shake.")]
+    [SerializeField] private float shakeRunBase = 1f;
+    [Tooltip("Multiplier applied to 4oK / chop / run-5+ strength when the play is beating another card (i.e. it's not the opener of the trick).")]
+    [SerializeField] private float shakeBeatMultiplier = 3f;
+
+    private Coroutine shakeCoroutine;
+    private Transform resolvedShakeTarget;
+    private Vector3 shakeOrigin;
+    private bool hasShakeOrigin;
+
+    // Shake context tracking
+    private int trickPlayCount;
 
     private readonly List<Card.CardData>[] seatHands = new List<Card.CardData>[4];
 
@@ -49,6 +112,9 @@ public class ThirteenGameController : MonoBehaviour
     private readonly Dictionary<int, string> seatToPlayerId = new Dictionary<int, string>();
     private readonly Dictionary<string, int> playerIdToSeat = new Dictionary<string, int>();
     private string leavePromptDefaultText = "leave";
+    private Coroutine rematchCoroutine;
+    private int rematchSequence;
+    private bool rematchInProgress;
 
     private void Awake()
     {
@@ -61,9 +127,10 @@ public class ThirteenGameController : MonoBehaviour
         if (passButton != null)
             passButton.onClick.AddListener(OnPassButtonClicked);
 
-        ResolveLeaveUiReferences();
+        ResolveUiReferences();
         WireLeaveUi();
         HideLeaveConfirmation();
+        HideRematchButton();
     }
 
     private IEnumerator Start()
@@ -131,7 +198,7 @@ public class ThirteenGameController : MonoBehaviour
 
     private void Update()
     {
-        if (!isMultiplayer || mpService == null || matchState == null || gameOver)
+        if (!isMultiplayer || mpService == null || matchState == null)
             return;
 
         mpService.Tick();
@@ -141,7 +208,7 @@ public class ThirteenGameController : MonoBehaviour
 
         lastSeenMatchRevision = mpService.MatchDataRevision;
 
-        if (isHost)
+        if (!gameOver && isHost)
             ProcessRemoteActionsAsHost();
 
         ProcessMatchPropertyUpdates();
@@ -181,6 +248,9 @@ public class ThirteenGameController : MonoBehaviour
         if (leaveButton != null)
             leaveButton.onClick.RemoveListener(OnLeaveButtonClicked);
 
+        if (rematchButton != null)
+            rematchButton.onClick.RemoveListener(OnRematchButtonClicked);
+
         if (confirmLeaveYesButton != null)
             confirmLeaveYesButton.onClick.RemoveListener(OnConfirmLeaveYesClicked);
 
@@ -188,10 +258,13 @@ public class ThirteenGameController : MonoBehaviour
             confirmLeaveNoButton.onClick.RemoveListener(OnConfirmLeaveNoClicked);
     }
 
-    private void ResolveLeaveUiReferences()
+    private void ResolveUiReferences()
     {
         if (leaveButton == null)
             leaveButton = FindButton("LeaveButton");
+
+        if (rematchButton == null)
+            rematchButton = FindButton("RematchButton");
 
         if (confirmLeaveYesButton == null)
             confirmLeaveYesButton = FindButton("YesButton");
@@ -206,6 +279,7 @@ public class ThirteenGameController : MonoBehaviour
             leavePromptDefaultText = leavePromptText.text;
 
         AttachButtonPop(leaveButton);
+        AttachButtonPop(rematchButton);
         AttachButtonPop(confirmLeaveYesButton);
         AttachButtonPop(confirmLeaveNoButton);
     }
@@ -216,6 +290,12 @@ public class ThirteenGameController : MonoBehaviour
         {
             leaveButton.onClick.RemoveListener(OnLeaveButtonClicked);
             leaveButton.onClick.AddListener(OnLeaveButtonClicked);
+        }
+
+        if (rematchButton != null)
+        {
+            rematchButton.onClick.RemoveListener(OnRematchButtonClicked);
+            rematchButton.onClick.AddListener(OnRematchButtonClicked);
         }
 
         if (confirmLeaveYesButton != null)
@@ -263,6 +343,53 @@ public class ThirteenGameController : MonoBehaviour
 
         if (leavePromptText != null)
             leavePromptText.text = leavePromptDefaultText;
+    }
+
+    private void HideRematchButton()
+    {
+        if (rematchButton != null)
+            rematchButton.gameObject.SetActive(false);
+    }
+
+    private void ShowRematchButton()
+    {
+        if (rematchButton != null)
+            rematchButton.gameObject.SetActive(true);
+    }
+
+    private void OnRematchButtonClicked()
+    {
+        if (rematchInProgress)
+            return;
+
+        if (!isMultiplayer || mpService == null)
+        {
+            BeginRematch(null, null, null);
+            return;
+        }
+
+        if (!isHost)
+        {
+            Debug.Log("[Thirteen] Waiting for host to start rematch.");
+            return;
+        }
+
+        System.Random rng = new System.Random();
+        int nextSeed = rng.Next(int.MinValue, int.MaxValue);
+        int nextStartSeat = rng.Next(0, 4);
+        rematchSequence++;
+        string seatsCsv = string.IsNullOrEmpty(lastSeenSeatsCsv) ? mpService.GetMatchProperty("seats") ?? string.Empty : lastSeenSeatsCsv;
+
+        mpService.PublishMatchProperties(new Dictionary<string, string>
+        {
+            ["seed"] = nextSeed.ToString(),
+            ["start"] = nextStartSeat.ToString(),
+            ["seats"] = seatsCsv,
+            ["move_log"] = string.Empty,
+            ["rematch_seq"] = rematchSequence.ToString()
+        });
+
+        BeginRematch(nextSeed, nextStartSeat, seatsCsv);
     }
 
     private static Button FindButton(string objectName)
@@ -376,12 +503,293 @@ public class ThirteenGameController : MonoBehaviour
         localHandHolder.ClearPlayArea();
         localHandHolder.ClearSelection();
 
+        // First trick always goes to whoever holds the 3 of spades.
+        int threeSpadesSeat = FindSeatWithThreeOfSpades();
+        if (threeSpadesSeat >= 0)
+            startingSeat = threeSpadesSeat;
+
         matchState = new ThirteenMatchState(startingSeat, enforceTurnOrder: !allowOutOfTurnTesting);
         gameOver = false;
+        rematchInProgress = false;
         appliedMoveLogCount = 0;
+
+        SetPlayedCardText(string.Empty);
+        SetCommentaryText(string.Empty);
+        HideRematchButton();
+
+        trickPlayCount = 0;
 
         RefreshOpponentVisuals();
         UpdateTurnState();
+    }
+
+    private int FindSeatWithThreeOfSpades()
+    {
+        for (int seat = 0; seat < seatHands.Length; seat++)
+        {
+            List<Card.CardData> hand = seatHands[seat];
+            if (hand == null)
+                continue;
+
+            for (int i = 0; i < hand.Count; i++)
+            {
+                if (hand[i].rank == 3 && hand[i].suit == Card.Suit.Spades)
+                    return seat;
+            }
+        }
+        return -1;
+    }
+
+    private void SetTurnPhaseText(string text)
+    {
+        if (turnPhaseText != null)
+            turnPhaseText.text = text ?? string.Empty;
+    }
+
+    private void SetPlayedCardText(string text)
+    {
+        if (playedCardText != null)
+            playedCardText.text = text ?? string.Empty;
+    }
+
+    private void SetCommentaryText(string text)
+    {
+        if (commentaryText == null)
+            return;
+
+        if (commentaryTypeCoroutine != null)
+        {
+            StopCoroutine(commentaryTypeCoroutine);
+            commentaryTypeCoroutine = null;
+        }
+
+        string target = text ?? string.Empty;
+
+        if (!isActiveAndEnabled || commentaryLetterDelay <= 0f || target.Length == 0)
+        {
+            commentaryText.text = target;
+            return;
+        }
+
+        commentaryTypeCoroutine = StartCoroutine(TypeCommentaryText(target));
+    }
+
+    private void ClearRoundText()
+    {
+        SetTurnPhaseText(string.Empty);
+        SetPlayedCardText(string.Empty);
+        SetCommentaryText(string.Empty);
+    }
+
+    private float ComputeShakeStrength(ThirteenRules.AnalyzedHand hand, int playsBeforeThisOne)
+    {
+        if (!hand.IsValid)
+            return 0f;
+
+        bool isBeat = playsBeforeThisOne > 0;
+        float strength = 0f;
+
+        switch (hand.Type)
+        {
+            case ThirteenRules.HandType.Single:
+                // Only Aces and 2s shake. Ranks 3-K never shake as singles.
+                if (IsAceOrTwoStrength(hand.PrimaryRankStrength))
+                    strength = shakeSingleAceTwoBase + playsBeforeThisOne * shakeBeatGrowth;
+                break;
+
+            case ThirteenRules.HandType.Pair:
+                // Same rule as singles: only pair-of-A / pair-of-2 shake.
+                if (IsAceOrTwoStrength(hand.PrimaryRankStrength))
+                    strength = shakePairAceTwoBase + playsBeforeThisOne * shakeBeatGrowth;
+                break;
+
+            case ThirteenRules.HandType.Triple:
+                // Triples scale linearly with how many triples have been played so far.
+                // 1st triple = base, 4th triple = 4 * base.
+                strength = shakeTripleBase * (playsBeforeThisOne + 1);
+                break;
+
+            case ThirteenRules.HandType.FourOfAKind:
+                // Always shakes when played; bigger shake if it's beating another card.
+                strength = shakeFourOfAKindBase * (isBeat ? shakeBeatMultiplier : 1f);
+                break;
+
+            case ThirteenRules.HandType.PairSequence:
+                // Always shakes when played; bigger shake if it's beating another card.
+                strength = shakeChopBase * (isBeat ? shakeBeatMultiplier : 1f);
+                break;
+
+            case ThirteenRules.HandType.Straight:
+                // Only runs of 5+ cards shake. Runs of 3-4 never shake.
+                if (hand.CardCount >= 5)
+                    strength = shakeRunBase * (isBeat ? shakeBeatMultiplier : 1f);
+                break;
+        }
+
+        return strength * shakeStrengthMultiplier;
+    }
+
+    private static bool IsAceOrTwoStrength(int rankStrength)
+    {
+        return rankStrength == ThirteenRules.GetRankStrength(1)
+            || rankStrength == ThirteenRules.GetRankStrength(2);
+    }
+
+    private Transform ResolveShakeTarget()
+    {
+        if (shakeTarget != null)
+            return shakeTarget;
+
+        if (resolvedShakeTarget != null)
+            return resolvedShakeTarget;
+
+        Canvas canvas = GetComponentInParent<Canvas>();
+        if (canvas == null)
+            canvas = FindFirstObjectByType<Canvas>();
+
+        if (canvas != null)
+            resolvedShakeTarget = canvas.transform;
+
+        return resolvedShakeTarget;
+    }
+
+    private void TriggerShake(float strength)
+    {
+        if (strength <= 0f)
+            return;
+
+        Transform target = ResolveShakeTarget();
+        if (target == null)
+            return;
+
+        if (!hasShakeOrigin)
+        {
+            shakeOrigin = target.localPosition;
+            hasShakeOrigin = true;
+        }
+        else if (shakeCoroutine != null)
+        {
+            // A shake is already running — restore the origin before starting the new one.
+            target.localPosition = shakeOrigin;
+        }
+
+        if (shakeCoroutine != null)
+            StopCoroutine(shakeCoroutine);
+
+        shakeCoroutine = StartCoroutine(ShakeRoutine(target, strength, ComputeShakeDuration(strength)));
+    }
+
+    private float ComputeShakeDuration(float strength)
+    {
+        float normalizedStrength = Mathf.InverseLerp(0f, Mathf.Max(0.01f, shakeDurationMaxStrength), strength);
+        float durationMultiplier = Mathf.Lerp(1f, shakeDurationStrengthMultiplier, normalizedStrength);
+        return shakeDuration * durationMultiplier;
+    }
+
+    private IEnumerator ShakeRoutine(Transform target, float strength, float duration)
+    {
+        float magnitude = strength * shakeBasePixels;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            float remaining = 1f - (elapsed / duration);
+            float m = magnitude * remaining;
+            target.localPosition = shakeOrigin + new Vector3(
+                Random.Range(-m, m),
+                Random.Range(-m, m),
+                0f);
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        target.localPosition = shakeOrigin;
+        shakeCoroutine = null;
+    }
+
+    private IEnumerator TypeCommentaryText(string target)
+    {
+        commentaryText.text = string.Empty;
+        WaitForSeconds wait = new WaitForSeconds(commentaryLetterDelay);
+        for (int i = 1; i <= target.Length; i++)
+        {
+            commentaryText.text = target.Substring(0, i);
+            yield return wait;
+        }
+        commentaryTypeCoroutine = null;
+    }
+
+    private string[] CommentaryPoolForHand(ThirteenRules.AnalyzedHand hand)
+    {
+        switch (hand.Type)
+        {
+            case ThirteenRules.HandType.Single:
+                // Playing a raw 2 is noteworthy; use a dedicated pool.
+                if (hand.PrimaryRankStrength == ThirteenRules.GetRankStrength(2))
+                    return ThirteenCommentaryStrings.CommentaryPlayedTwo;
+                return null;
+            case ThirteenRules.HandType.FourOfAKind:
+                return ThirteenCommentaryStrings.CommentaryFourOfAKind;
+            case ThirteenRules.HandType.Straight:
+                return ThirteenCommentaryStrings.CommentaryStraight;
+            default:
+                return null;
+        }
+    }
+
+    private void ReportPlay(int seat, IReadOnlyList<Card.CardData> playedCards)
+    {
+        if (gameOver)
+            return;
+
+        ThirteenRules.AnalyzedHand hand = ThirteenRules.Analyze(playedCards);
+        string playerLabel = ThirteenCommentaryStrings.PlayerLabel(seat, localPlayerSeat);
+        string cardsText = ThirteenCommentaryStrings.DescribeHand(hand, playedCards);
+
+        // Compute and trigger shake BEFORE incrementing the play count — strength depends on
+        // how many plays already happened in the trick (= trickPlayCount before this one).
+        float strength = ComputeShakeStrength(hand, trickPlayCount);
+        TriggerShake(strength);
+
+        trickPlayCount++;
+
+        SetPlayedCardText(ThirteenCommentaryStrings.Format(
+            PlayedCardTemplate,
+            player: playerLabel,
+            cards: cardsText));
+
+        // If this play chops a single 2, use the chop-specific pool; otherwise fall back to the type-specific pool.
+        bool choppedTwo = hand.IsValid && hand.IsChop
+            && (hand.Type == ThirteenRules.HandType.FourOfAKind || hand.Type == ThirteenRules.HandType.PairSequence);
+        string[] pool = choppedTwo ? ThirteenCommentaryStrings.CommentaryChopTwo : CommentaryPoolForHand(hand);
+
+        if (pool == null || pool.Length == 0)
+            return; // No commentary pool for this hand type — leave previous line on screen.
+
+        string template = ThirteenCommentaryStrings.PickRandom(pool);
+        string rankName = ThirteenCommentaryStrings.RankNameFromStrength(hand.PrimaryRankStrength);
+        SetCommentaryText(ThirteenCommentaryStrings.Format(
+            template,
+            player: playerLabel,
+            cards: cardsText,
+            rank: rankName,
+            count: hand.CardCount));
+    }
+
+    private void ReportPass(int seat)
+    {
+        if (gameOver)
+            return;
+
+        if (matchState != null && matchState.TrickIsOpen)
+        {
+            trickPlayCount = 0;
+            ClearRoundText();
+            return;
+        }
+
+        string playerLabel = ThirteenCommentaryStrings.PlayerLabel(seat, localPlayerSeat);
+        string phaseTemplate = seat == localPlayerSeat ? LocalPassedTemplate : RemotePassedTemplate;
+        SetTurnPhaseText(ThirteenCommentaryStrings.Format(phaseTemplate, player: playerLabel));
     }
 
     private void OnPassButtonClicked()
@@ -420,10 +828,12 @@ public class ThirteenGameController : MonoBehaviour
             localHandHolder.ClearPlayArea();
 
         UpdateTurnState();
+        ReportPass(localPlayerSeat);
     }
 
     private void CompletePlay(int seat, List<Card.CardData> playedCards, IReadOnlyList<Card> draggedCards = null)
     {
+        ReportPlay(seat, playedCards);
         RemoveCardsFromSeatHand(seat, playedCards);
 
         if (seat == localPlayerSeat)
@@ -561,6 +971,18 @@ public class ThirteenGameController : MonoBehaviour
         localHandHolder.SetTurnActive(allowOutOfTurnTesting || isLocalTurn);
         Debug.Log($"[Thirteen] Turn: Seat {currentSeat}");
 
+        if (matchState.TrickIsOpen)
+        {
+            SetTurnPhaseText(string.Empty);
+        }
+        else
+        {
+        string turnPlayerLabel = ThirteenCommentaryStrings.PlayerLabel(currentSeat, localPlayerSeat);
+        SetTurnPhaseText(isLocalTurn
+            ? LocalTurnTemplate
+            : ThirteenCommentaryStrings.Format(RemoteTurnTemplate, player: turnPlayerLabel));
+        }
+
         if (allowOutOfTurnTesting || isLocalTurn)
             return;
 
@@ -620,6 +1042,7 @@ public class ThirteenGameController : MonoBehaviour
             localHandHolder.ClearPlayArea();
 
         UpdateTurnState();
+        ReportPass(seat);
     }
 
     private List<Card.CardData> FindLowestBotPlay(List<Card.CardData> hand, ThirteenRules.AnalyzedHand currentHand)
@@ -851,7 +1274,12 @@ public class ThirteenGameController : MonoBehaviour
 
         localHandHolder.SetTurnActive(false);
         localHandHolder.SetHandInteractionEnabled(false);
+        ShowRematchButton();
         Debug.Log($"[Thirteen] Game over. Winner: Seat {winnerSeat}");
+
+        SetTurnPhaseText(string.Empty);
+        SetPlayedCardText(string.Empty);
+        SetCommentaryText(string.Empty);
     }
 
     private sealed class RankBucket
@@ -876,6 +1304,23 @@ public class ThirteenGameController : MonoBehaviour
 
     private void ProcessMatchPropertyUpdates()
     {
+        string rematchValue = mpService.GetMatchProperty("rematch_seq");
+        if (int.TryParse(rematchValue, out int latestRematchSequence) && latestRematchSequence > rematchSequence)
+        {
+            rematchSequence = latestRematchSequence;
+
+            string rematchSeatsCsv = mpService.GetMatchProperty("seats") ?? string.Empty;
+            int rematchSeed = 0;
+            int rematchStartSeat = 0;
+            int.TryParse(mpService.GetMatchProperty("seed"), out rematchSeed);
+            int.TryParse(mpService.GetMatchProperty("start"), out rematchStartSeat);
+            BeginRematch(rematchSeed, rematchStartSeat, rematchSeatsCsv);
+            return;
+        }
+
+        if (gameOver)
+            return;
+
         string latestSeatsCsv = mpService.GetMatchProperty("seats") ?? string.Empty;
         if (!string.Equals(latestSeatsCsv, lastSeenSeatsCsv))
         {
@@ -931,6 +1376,7 @@ public class ThirteenGameController : MonoBehaviour
                 localHandHolder.ClearPlayArea();
 
             UpdateTurnState();
+            ReportPass(seat);
             return;
         }
 
@@ -993,6 +1439,7 @@ public class ThirteenGameController : MonoBehaviour
                 if (matchState.TrickIsOpen)
                     localHandHolder.ClearPlayArea();
                 UpdateTurnState();
+                ReportPass(seat);
             }
             else if (payload.StartsWith("play:"))
             {
@@ -1115,5 +1562,82 @@ public class ThirteenGameController : MonoBehaviour
             return 0;
 
         return moveLog.Split(';').Count(entry => !string.IsNullOrWhiteSpace(entry));
+    }
+
+    private void BeginRematch(int? seed, int? startSeatOverride, string seatsCsv)
+    {
+        if (rematchCoroutine != null)
+            StopCoroutine(rematchCoroutine);
+
+        rematchCoroutine = StartCoroutine(BeginRematchRoutine(seed, startSeatOverride, seatsCsv));
+    }
+
+    private IEnumerator BeginRematchRoutine(int? seed, int? startSeatOverride, string seatsCsv)
+    {
+        rematchInProgress = true;
+        gameOver = false;
+        pendingSelfBroadcasts = 0;
+        appliedMoveLogCount = 0;
+        trickPlayCount = 0;
+
+        if (botTurnCoroutine != null)
+        {
+            StopCoroutine(botTurnCoroutine);
+            botTurnCoroutine = null;
+        }
+
+        if (commentaryTypeCoroutine != null)
+        {
+            StopCoroutine(commentaryTypeCoroutine);
+            commentaryTypeCoroutine = null;
+        }
+
+        if (shakeCoroutine != null)
+        {
+            StopCoroutine(shakeCoroutine);
+            shakeCoroutine = null;
+        }
+
+        Transform target = ResolveShakeTarget();
+        if (target != null && hasShakeOrigin)
+            target.localPosition = shakeOrigin;
+
+        if (!string.IsNullOrEmpty(seatsCsv))
+        {
+            lastSeenSeatsCsv = seatsCsv;
+            ParseSeatAssignments(seatsCsv);
+
+            if (isMultiplayer && mpService != null && playerIdToSeat.TryGetValue(mpService.LocalPlayerId ?? string.Empty, out int mySeat))
+                localPlayerSeat = mySeat;
+        }
+
+        if (startSeatOverride.HasValue)
+            startingSeat = startSeatOverride.Value;
+
+        matchState = null;
+        localHandHolder.ClearSelection();
+        localHandHolder.ClearPlayArea();
+        localHandHolder.SetTurnActive(false);
+        localHandHolder.SetHandInteractionEnabled(false);
+        SetTurnPhaseText(string.Empty);
+        SetPlayedCardText(string.Empty);
+        SetCommentaryText(string.Empty);
+        HideLeaveConfirmation();
+        HideRematchButton();
+
+        if (passButton != null)
+            passButton.interactable = false;
+
+        if (deckDealer == null)
+        {
+            rematchInProgress = false;
+            yield break;
+        }
+
+        deckDealer.ShuffleAndDeal(seed);
+        yield return new WaitUntil(() => !deckDealer.IsDealing);
+
+        FinishInitialization();
+        rematchCoroutine = null;
     }
 }

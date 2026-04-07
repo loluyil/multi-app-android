@@ -6,11 +6,8 @@ public class ThirteenSessionRuntime : MonoBehaviour
 
     [SerializeField] private ThirteenPlayMode playMode = ThirteenPlayMode.Solo;
     [SerializeField] private ThirteenMultiplayerEntryMode entryMode = ThirteenMultiplayerEntryMode.None;
-    [SerializeField] private ThirteenMultiplayerTransportMode transportMode = ThirteenMultiplayerTransportMode.Mock;
     [SerializeField] private string displayName = "Player";
     [SerializeField] private string roomCode = string.Empty;
-    [SerializeField] private string joinAddress = "127.0.0.1";
-    [SerializeField] private int port = 7777;
 
     public static ThirteenSessionRuntime Instance
     {
@@ -29,11 +26,8 @@ public class ThirteenSessionRuntime : MonoBehaviour
 
     public ThirteenPlayMode PlayMode => playMode;
     public ThirteenMultiplayerEntryMode EntryMode => entryMode;
-    public ThirteenMultiplayerTransportMode TransportMode => transportMode;
     public string DisplayName => string.IsNullOrWhiteSpace(displayName) ? "Player" : displayName.Trim();
     public string RoomCode => roomCode;
-    public string JoinAddress => string.IsNullOrWhiteSpace(joinAddress) ? "127.0.0.1" : joinAddress.Trim();
-    public int Port => port;
     public bool IsMultiplayer => playMode == ThirteenPlayMode.Multiplayer;
 
     private void Awake()
@@ -63,13 +57,11 @@ public class ThirteenSessionRuntime : MonoBehaviour
         roomCode = string.Empty;
     }
 
-    public void ConfigureJoin(string playerDisplayName, string address, int requestedPort, string requestedRoomCode)
+    public void ConfigureJoin(string playerDisplayName, string requestedRoomCode)
     {
         playMode = ThirteenPlayMode.Multiplayer;
         entryMode = ThirteenMultiplayerEntryMode.Join;
         displayName = SanitizeDisplayName(playerDisplayName);
-        joinAddress = string.IsNullOrWhiteSpace(address) ? "127.0.0.1" : address.Trim();
-        port = Mathf.Max(1, requestedPort);
         roomCode = (requestedRoomCode ?? string.Empty).Trim().ToUpperInvariant();
     }
 

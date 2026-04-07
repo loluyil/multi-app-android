@@ -13,7 +13,7 @@ public interface IThirteenMultiplayerService
     int MatchDataRevision { get; }
 
     ThirteenLobbyState HostLobby(string displayName);
-    ThirteenLobbyState JoinLobby(string displayName, string roomCode, string address, int port);
+    ThirteenLobbyState JoinLobby(string displayName, string roomCode);
     ThirteenLobbyState ToggleReady();
     ThirteenLobbyState StartMatch();
     void ClearMatchStartFlag();

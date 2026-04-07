@@ -80,7 +80,6 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
 
         viewRefs.displayNameInput = GetOrCreateInputField(stack, "DisplayNameInput", "Display Name");
         viewRefs.roomCodeInput = GetOrCreateInputField(stack, "RoomCodeInput", "Room Code");
-        viewRefs.addressInput = GetOrCreateInputField(stack, "AddressInput", "Join Address");
         viewRefs.hostButton = GetOrCreateButton(stack, "HostButton", "Host Game");
         viewRefs.joinButton = GetOrCreateButton(stack, "JoinButton", "Join Game");
         viewRefs.backToMainButton = GetOrCreateButton(stack, "BackToMainButton", "Back");

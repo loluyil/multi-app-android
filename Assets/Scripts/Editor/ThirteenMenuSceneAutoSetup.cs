@@ -4,27 +4,24 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-[InitializeOnLoad]
 public static class ThirteenMenuSceneAutoSetup
 {
-    static ThirteenMenuSceneAutoSetup()
-    {
-        EditorApplication.delayCall += TryBuildForActiveScene;
-    }
+    // NOTE: Auto-build on scene load was intentionally removed. The builder
+    // forcibly resets anchors/positions via SetAnchors(...), which clobbers
+    // any hand-tuned layout in ThirteenMenuScene. Use the menu item below
+    // only when you want to scaffold a fresh scene from scratch.
 
     [MenuItem("Tools/Thirteen/Build Menu UI")]
     private static void BuildMenuUi()
     {
-        EnsureMenuRoot();
-    }
-
-    private static void TryBuildForActiveScene()
-    {
-        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        if (!EditorUtility.DisplayDialog(
+                "Rebuild Thirteen Menu UI?",
+                "This will recreate missing UI and RESET anchors/positions on existing UI elements to their hardcoded defaults. Any manual layout changes will be lost.\n\nAre you sure?",
+                "Rebuild",
+                "Cancel"))
+        {
             return;
-
-        if (SceneManager.GetActiveScene().name != AppSceneNames.ThirteenMenu)
-            return;
+        }
 
         EnsureMenuRoot();
     }

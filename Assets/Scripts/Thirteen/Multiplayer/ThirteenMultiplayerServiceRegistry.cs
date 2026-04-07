@@ -4,8 +4,17 @@ public static class ThirteenMultiplayerServiceRegistry
 
     public static IThirteenMultiplayerService GetService()
     {
-        service ??= new ThirteenRelayMultiplayerService();
+        service ??= CreateService();
         return service;
+    }
+
+    private static IThirteenMultiplayerService CreateService()
+    {
+#if PHOTON_UNITY_NETWORKING
+        if (ThirteenPhotonConfig.Load().IsConfigured)
+            return new ThirteenPhotonRealtimeService();
+#endif
+        return new ThirteenMockMultiplayerService();
     }
 
     public static void Reset()

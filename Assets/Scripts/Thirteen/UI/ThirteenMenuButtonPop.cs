@@ -6,10 +6,10 @@ using UnityEngine.EventSystems;
 public class ThirteenMenuButtonPop : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler, IPointerClickHandler
 {
     [SerializeField] private float pressedScale = 0.94f;
-    [SerializeField] private float popScale = 1.06f;
+    [SerializeField] private float popScale = 1.09f;
     [SerializeField] private float downDuration = 0.07f;
-    [SerializeField] private float upDuration = 0.1f;
-    [SerializeField] private float settleDuration = 0.12f;
+    [SerializeField] private float upDuration = 0.11f;
+    [SerializeField] private float settleDuration = 0.16f;
     [SerializeField] private Ease downEase = Ease.OutQuad;
     [SerializeField] private Ease popEase = Ease.OutQuad;
     [SerializeField] private Ease settleEase = Ease.OutBack;

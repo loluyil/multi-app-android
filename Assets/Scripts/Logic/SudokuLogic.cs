@@ -16,6 +16,10 @@ public class SudokuLogic : MonoBehaviour
     public GameObject cellPrefab;         // Clickable empty cell (Button + SudokuCell + child TMP)
     public GameObject pencilMarkPrefab;   // Small TMP text for pencil marks
 
+    [Header("Cell Sizing")]
+    [Range(0.8f, 1f)]
+    public float spawnedCellSizeMultiplier = 0.94f;
+
     [Header("Number Pad")]
     public Transform numberPadParent;
     public GameObject numberPadBtnPrefab;
@@ -87,11 +91,25 @@ public class SudokuLogic : MonoBehaviour
 
     private IEnumerator InitializeGame()
     {
+        Canvas.ForceUpdateCanvases();
+        yield return null;
+        Canvas.ForceUpdateCanvases();
+
         yield return new WaitUntil(() =>
             gridRenderer.AllRows != null &&
             gridRenderer.AllColumns != null &&
             gridRenderer.AllRows[0] != null &&
-            gridRenderer.AllColumns[0] != null);
+            gridRenderer.AllColumns[0] != null &&
+            gridRenderer.CellWidth != null &&
+            gridRenderer.CellHeight != null &&
+            gridRenderer.CellWidth.Length > 0 &&
+            gridRenderer.CellHeight.Length > 0 &&
+            gridRenderer.CellWidth[0] > 0f &&
+            gridRenderer.CellHeight[0] > 0f);
+
+        Canvas.ForceUpdateCanvases();
+        yield return null;
+        Canvas.ForceUpdateCanvases();
 
         CreateNumberPad();
 
@@ -984,8 +1002,8 @@ public class SudokuLogic : MonoBehaviour
 
         Canvas canvas = canvasTransform.GetComponentInParent<Canvas>();
         float scaleFactor = canvas.scaleFactor;
-        float cellW = gridRenderer.CellWidth[0] / scaleFactor;
-        float cellH = gridRenderer.CellHeight[0] / scaleFactor;
+        float cellW = (gridRenderer.CellWidth[0] / scaleFactor) * spawnedCellSizeMultiplier;
+        float cellH = (gridRenderer.CellHeight[0] / scaleFactor) * spawnedCellSizeMultiplier;
         clueRectTransform.sizeDelta = new Vector2(cellW, cellH);
 
         foreach (RectTransform child in clueRectTransform)
@@ -1034,8 +1052,8 @@ public class SudokuLogic : MonoBehaviour
 
         Canvas canvas = canvasTransform.GetComponentInParent<Canvas>();
         float scaleFactor = canvas.scaleFactor;
-        float cellW = gridRenderer.CellWidth[0] / scaleFactor;
-        float cellH = gridRenderer.CellHeight[0] / scaleFactor;
+        float cellW = (gridRenderer.CellWidth[0] / scaleFactor) * spawnedCellSizeMultiplier;
+        float cellH = (gridRenderer.CellHeight[0] / scaleFactor) * spawnedCellSizeMultiplier;
         cellRectTransform.sizeDelta = new Vector2(cellW, cellH);
 
         foreach (RectTransform child in cellRectTransform)

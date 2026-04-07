@@ -7,7 +7,7 @@ using UnityEngine.UI;
 public class ThirteenMenuDraggableCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
     [Header("Drag")]
-    [SerializeField] private float dragScale = 1.04f;
+    [SerializeField] private float idleScaleMultiplier = 0.96f;
     [SerializeField] private float dragDuration = 0.14f;
     [SerializeField] private float returnDuration = 0.2f;
     [SerializeField] private Ease dragEase = Ease.OutQuad;
@@ -27,7 +27,8 @@ public class ThirteenMenuDraggableCard : MonoBehaviour, IBeginDragHandler, IDrag
     private Tween scaleTween;
     private Vector3 initialLocalPosition;
     private Vector3 initialLocalScale;
-    private Vector3 originalLocalScale;
+    private Vector3 authoredLocalScale;
+    private Vector3 idleLocalScale;
     private Quaternion initialLocalRotation;
     private Vector3 lastWorldPosition;
     private bool hasLastWorldPosition;
@@ -42,14 +43,16 @@ public class ThirteenMenuDraggableCard : MonoBehaviour, IBeginDragHandler, IDrag
         if (canvasGroup == null)
             canvasGroup = gameObject.AddComponent<CanvasGroup>();
 
-        originalLocalScale = rectTransform.localScale;
+        authoredLocalScale = rectTransform.localScale;
+        idleLocalScale = authoredLocalScale * idleScaleMultiplier;
+        rectTransform.localScale = idleLocalScale;
         CacheRestState();
     }
 
     private void OnEnable()
     {
         if (!isDragging)
-            originalLocalScale = rectTransform.localScale;
+            rectTransform.localScale = idleLocalScale;
 
         CacheRestState();
     }
@@ -66,6 +69,13 @@ public class ThirteenMenuDraggableCard : MonoBehaviour, IBeginDragHandler, IDrag
         }
 
         Vector3 delta = currentWorldPosition - lastWorldPosition;
+        bool isMoving = delta.sqrMagnitude > 0.0001f;
+        if (!isDragging && !isMoving && Quaternion.Angle(rectTransform.localRotation, initialLocalRotation) < 0.05f)
+        {
+            lastWorldPosition = currentWorldPosition;
+            return;
+        }
+
         float targetTiltX = Mathf.Clamp(-delta.y * verticalTiltFactor, -maxTiltX, maxTiltX);
         float targetTiltZ = Mathf.Clamp(-delta.x * horizontalTiltFactor, -maxTiltZ, maxTiltZ);
         Quaternion dragRotation = Quaternion.Euler(targetTiltX, 0f, targetTiltZ);
@@ -90,7 +100,7 @@ public class ThirteenMenuDraggableCard : MonoBehaviour, IBeginDragHandler, IDrag
         originalSiblingIndex = rectTransform.GetSiblingIndex();
         rectTransform.SetAsLastSibling();
         canvasGroup.blocksRaycasts = false;
-        scaleTween = rectTransform.DOScale(originalLocalScale * dragScale, dragDuration).SetEase(dragEase);
+        scaleTween = rectTransform.DOScale(authoredLocalScale, dragDuration).SetEase(dragEase);
     }
 
     public void OnDrag(PointerEventData eventData)
@@ -113,7 +123,7 @@ public class ThirteenMenuDraggableCard : MonoBehaviour, IBeginDragHandler, IDrag
 
         KillTweens();
         moveTween = rectTransform.DOLocalMove(initialLocalPosition, returnDuration).SetEase(returnEase);
-        scaleTween = rectTransform.DOScale(originalLocalScale, returnDuration).SetEase(returnEase);
+        scaleTween = rectTransform.DOScale(idleLocalScale, returnDuration).SetEase(returnEase);
     }
 
     private void CacheRestState()
@@ -122,7 +132,7 @@ public class ThirteenMenuDraggableCard : MonoBehaviour, IBeginDragHandler, IDrag
             return;
 
         initialLocalPosition = rectTransform.localPosition;
-        initialLocalScale = originalLocalScale;
+        initialLocalScale = idleLocalScale;
         initialLocalRotation = rectTransform.localRotation;
     }
 
