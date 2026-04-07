@@ -23,7 +23,6 @@ public class ThirteenMenuViewRefs : MonoBehaviour
     [Header("Inputs")]
     public TMP_InputField displayNameInput;
     public TMP_InputField roomCodeInput;
-    public TMP_InputField addressInput;
 
     [Header("Text")]
     public TMP_Text titleText;

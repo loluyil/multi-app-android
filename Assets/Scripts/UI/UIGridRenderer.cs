@@ -53,7 +53,7 @@ public class UIGridRenderer : Graphic
     protected override void OnPopulateMesh(VertexHelper vh)
     {
         vh.Clear();
-        
+
         //Setting is found at the Rect Transform in the inspector -- width + height
         _width = rectTransform.rect.width;
         _height = rectTransform.rect.height;
@@ -68,13 +68,13 @@ public class UIGridRenderer : Graphic
         //Renders a grid with it's own settings
         for (int i = 0; i < grids.Length; i++)
         {
-            if(grids[i].enabled) 
+            if(grids[i].enabled)
             {
-                //Stores cellWidth and cellHeight into an Array
+                //Stores cellWidth and cellHeight into an Array (exact, consumed by SudokuLogic)
                 _cellWidth[i] = _width /(float)grids[i].gridSize.x;
                 _cellHeight[i] = _height /(float)grids[i].gridSize.y;
 
-                RenderGrid(vh, grids[i], i);        
+                RenderGrid(vh, grids[i], i);
             }
         }
     }
@@ -83,17 +83,18 @@ public class UIGridRenderer : Graphic
     //Keep or change? You can make the X != Y on the grid as an option for more customizable, but not realistic?
     //Can make calculations faster if you remove one..
     private void RenderGrid(VertexHelper vh, GridSettings settings, int index)
-    {   
+    {
         //Ex. cellWidth = 300 / 3 = 100
         float cellWidth = _width / (float)settings.gridSize.x;
         float cellHeight = _height / (float)settings.gridSize.y;
-        float halfThickness = settings.thickness / 2f;
+        float halfThickness = settings.thickness * 0.5f;
 
         // Horizontal lines
         for (int y = 0; y <= settings.gridSize.y; y++)
         {
-            //Lines will spawn at y * 100 if gridSize = 3. So 0, 100, 200, 300. 4 Horizontal lines
-            float yPos = Mathf.Round(y * cellHeight);
+            //Exact mathematical position - do NOT Mathf.Round in local space, that was the
+            //original resolution bug: it made cell sizes subtly unequal at non-integer cellHeight.
+            float yPos = y * cellHeight;
             float yMin = yPos - halfThickness;
             float yMax = yPos + halfThickness;
 
@@ -129,15 +130,15 @@ public class UIGridRenderer : Graphic
         // Vertical lines
         for (int x = 0; x <= settings.gridSize.x; x++)
         {
-            //Lines will spawn at x * 100 if gridsize = 3
-            float xPos = Mathf.Round(x * cellWidth);
+            //Exact mathematical position - same rationale as horizontal lines above.
+            float xPos = x * cellWidth;
             float xMin = xPos - halfThickness;
             float xMax = xPos + halfThickness;
 
             //Where the vertical line starts and stops.
             float startY = 0;
             float endY = _height;
-            
+
             //Optional length adjustment
             if (settings.adjustEdges && (x == 0 || x == settings.gridSize.x))
             {

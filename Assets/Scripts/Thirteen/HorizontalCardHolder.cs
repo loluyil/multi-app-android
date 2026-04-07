@@ -23,16 +23,42 @@ public class HorizontalCardHolder : MonoBehaviour
     [SerializeField] private float dealStartScale = 0.8f;
     [SerializeField] private float dragScale = 1.08f;
     [SerializeField] private Vector2 shadowOffset = new Vector2(0f, -18f);
-    [SerializeField] private float multiDragSeparation = 42f;
     [SerializeField] private Ease shiftEase = Ease.OutCubic;
     [SerializeField] private Ease returnEase = Ease.OutCubic;
     [SerializeField] private Ease playAreaEase = Ease.OutCubic;
     [SerializeField] private Ease dragScaleEase = Ease.OutQuad;
 
+    [Header("Multi-Drag")]
+    [Tooltip("Horizontal spacing (in local units) between cards while a multi-selected group is being dragged. " +
+             "Larger = more fan-out between the held cards; 0 = perfectly stacked on the cursor.")]
+    [Range(0f, 200f)]
+    [SerializeField] private float multiDragSeparation = 42f;
+
+    [Tooltip("How long the non-dragged group cards take to fly in and gather around the dragged card " +
+             "at the start of a multi-drag. Set to 0 for an instant snap (the old behaviour).")]
+    [Range(0f, 1f)]
+    [SerializeField] private float gatherDuration = 0.18f;
+
+    [Tooltip("Easing curve used while the grouped cards are gathering into place around the dragged card.")]
+    [SerializeField] private Ease gatherEase = Ease.OutCubic;
+
+    public float MultiDragSeparation
+    {
+        get => multiDragSeparation;
+        set => multiDragSeparation = Mathf.Max(0f, value);
+    }
+
+    // Cards currently mid-gather. While a card is in this set, UpdateGroupedCardPosition
+    // must not hard-set its position, otherwise the per-frame drag update fights the tween.
+    private readonly HashSet<Card> gatheringCards = new HashSet<Card>();
+    // Active gather tweens so we can kill them all on OnEndDrag / a fresh OnBeginDrag.
+    private readonly List<Tween> gatherTweens = new List<Tween>();
+
     private readonly List<Card> cards = new List<Card>();
     private readonly List<RectTransform> slots = new List<RectTransform>();
     private readonly List<Card> activeDragGroup = new List<Card>();
     private readonly List<GameObject> dealPreviewCards = new List<GameObject>();
+    private readonly List<RectTransform> playAreaSlots = new List<RectTransform>();
 
     private ThirteenGameController controller;
     private RectTransform holderRect;
@@ -265,8 +291,30 @@ public class HorizontalCardHolder : MonoBehaviour
         if (playArea == null)
             return;
 
-        for (int i = playArea.childCount - 1; i >= 0; i--)
-            Destroy(playArea.GetChild(i).gameObject);
+        for (int i = 0; i < playAreaSlots.Count; i++)
+        {
+            RectTransform slot = playAreaSlots[i];
+            if (slot == null)
+                continue;
+
+            for (int childIndex = slot.childCount - 1; childIndex >= 0; childIndex--)
+            {
+                Transform child = slot.GetChild(childIndex);
+                if (child == null)
+                    continue;
+
+                Card childCard = child.GetComponent<Card>();
+                if (childCard != null && !childCard.enabled)
+                {
+                    child.gameObject.SetActive(false);
+                    continue;
+                }
+
+                Destroy(child.gameObject);
+            }
+
+            slot.gameObject.SetActive(false);
+        }
     }
 
     public void ClearSelection()
@@ -305,13 +353,14 @@ public class HorizontalCardHolder : MonoBehaviour
             return;
 
         List<Card.CardData> sortedCards = ThirteenRules.SortCards(playedCards);
-        List<RectTransform> targetSlots = CreatePlayAreaSlots(sortedCards.Count);
+        List<RectTransform> targetSlots = EnsurePlayAreaSlots(sortedCards.Count);
 
         for (int i = 0; i < sortedCards.Count && i < targetSlots.Count; i++)
         {
             Card.CardData data = sortedCards[i];
-            GameObject cardObject = Instantiate(cardPrefab, targetSlots[i]);
+            GameObject cardObject = GetOrCreateDisplayCard(targetSlots[i]);
             cardObject.name = $"Played_{data.SpriteKey}";
+            cardObject.SetActive(true);
 
             RectTransform rect = cardObject.GetComponent<RectTransform>();
             if (rect != null)
@@ -326,13 +375,27 @@ public class HorizontalCardHolder : MonoBehaviour
                 spriteLookup.TryGetValue(data.SpriteKey, out Sprite sprite);
                 card.SetCardData(data, sprite);
                 card.SetSelected(false, false);
+                card.SetReturning(false);
+                card.KillTweens();
+                card.SnapToLocal(Vector2.zero);
+                card.SnapScale(Vector3.one);
                 card.SetInteractionEnabled(false);
                 card.enabled = false;
             }
 
             Button button = cardObject.GetComponent<Button>();
             if (button != null)
+            {
+                button.enabled = true;
                 button.interactable = false;
+            }
+
+            Image rootImage = cardObject.GetComponent<Image>();
+            if (rootImage != null)
+            {
+                rootImage.enabled = true;
+                rootImage.color = Color.white;
+            }
         }
     }
 
@@ -357,6 +420,9 @@ public class HorizontalCardHolder : MonoBehaviour
         if (card == null || !handInteractionEnabled)
             return;
 
+        //Safety: a brand new drag should never inherit gather state from a previous one.
+        KillGatherTweens();
+
         draggedCard = card;
         activeDragGroup.Clear();
         activeDragGroup.AddRange(GetDragGroup(card));
@@ -369,27 +435,84 @@ public class HorizontalCardHolder : MonoBehaviour
         foreach (Card dragCard in activeDragGroup)
             cards.Remove(dragCard);
 
+        bool isMultiDrag = activeDragGroup.Count > 1;
         for (int i = 0; i < activeDragGroup.Count; i++)
         {
             Card dragCard = activeDragGroup[i];
             dragCard.KillTweens();
             dragCard.transform.SetParent(dragLayer, true);
             dragCard.ShowShadow(dragLayer, shadowOffset);
+            dragCard.SnapScale(Vector3.one);
 
-            if (dragCard == draggedCard)
+            if (dragCard == draggedCard && !isMultiDrag)
+            {
                 dragCard.TweenScale(Vector3.one * dragScale, shiftDuration, dragScaleEase);
-            else
+            }
+            else if (gatherDuration <= 0f)
+            {
+                //Instant snap path - preserves old behaviour when the tween is disabled.
                 UpdateGroupedCardPosition(dragCard, i);
+            }
+            else
+            {
+                StartGatherTween(dragCard, i);
+            }
         }
 
         UpdateDragGroupLayering();
         ArrangeCards(false);
     }
 
+    //Tween a non-dragged group card from its current world position to the live target
+    //(dragged card position + group offset). The target is recomputed every frame inside
+    //OnUpdate so the gather point follows the cursor if the player is already moving it.
+    private void StartGatherTween(Card dragCard, int groupIndex)
+    {
+        if (dragCard == null || draggedCard == null)
+            return;
+
+        Vector3 startWorldPos = dragCard.RectTransform.position;
+        int localGroupIndex = groupIndex; //capture for closure
+        Card localCard = dragCard;        //capture for closure
+
+        gatheringCards.Add(dragCard);
+
+        Tween gatherTween = DOVirtual.Float(0f, 1f, gatherDuration, t =>
+        {
+            if (localCard == null || draggedCard == null)
+                return;
+
+            float offsetX = (localGroupIndex - draggedCardGroupIndex) * multiDragSeparation;
+            Vector3 liveTarget = draggedCard.RectTransform.position + new Vector3(offsetX, 0f, 0f);
+            localCard.RectTransform.position = Vector3.LerpUnclamped(startWorldPos, liveTarget, t);
+        })
+        .SetEase(gatherEase)
+        .OnKill(() => gatheringCards.Remove(localCard))
+        .OnComplete(() => gatheringCards.Remove(localCard));
+
+        gatherTweens.Add(gatherTween);
+    }
+
+    private void KillGatherTweens()
+    {
+        for (int i = 0; i < gatherTweens.Count; i++)
+        {
+            Tween tween = gatherTweens[i];
+            if (tween != null && tween.IsActive())
+                tween.Kill();
+        }
+        gatherTweens.Clear();
+        gatheringCards.Clear();
+    }
+
     private void OnEndDrag(Card card)
     {
         if (card == null || previewIndex < 0)
             return;
+
+        //The return-to-slot tweens are about to take over - cancel any in-progress gather
+        //so the two tween systems don't fight over the same RectTransform.position.
+        KillGatherTweens();
 
         if (TryPlayDragGroup())
         {
@@ -552,7 +675,7 @@ public class HorizontalCardHolder : MonoBehaviour
             card.HideShadow();
         }
 
-        List<RectTransform> targetSlots = CreatePlayAreaSlots(validCards.Count);
+        List<RectTransform> targetSlots = EnsurePlayAreaSlots(validCards.Count);
         int completedCount = 0;
         int expectedCount = validCards.Count;
 
@@ -711,6 +834,11 @@ public class HorizontalCardHolder : MonoBehaviour
 
     private void UpdateGroupedCardPosition(Card groupedCard, int groupIndex)
     {
+        //While a card is still flying in from the gather tween, leave its position alone -
+        //the tween owns it and re-samples the dragged card's live position each frame.
+        if (gatheringCards.Contains(groupedCard))
+            return;
+
         float offsetX = (groupIndex - draggedCardGroupIndex) * multiDragSeparation;
         groupedCard.RectTransform.position = draggedCard.RectTransform.position + new Vector3(offsetX, 0f, 0f);
     }
@@ -733,23 +861,86 @@ public class HorizontalCardHolder : MonoBehaviour
         }
     }
 
-    private List<RectTransform> CreatePlayAreaSlots(int count)
+    private List<RectTransform> EnsurePlayAreaSlots(int count)
     {
-        List<RectTransform> createdSlots = new List<RectTransform>(count);
+        List<RectTransform> activeSlots = new List<RectTransform>(count);
         if (playArea == null || slotPrefab == null)
-            return createdSlots;
+            return activeSlots;
 
-        for (int i = 0; i < count; i++)
+        while (playAreaSlots.Count < count)
         {
             GameObject slotObject = Instantiate(slotPrefab, playArea);
-            slotObject.name = $"PlayedSlot_{i}";
+            slotObject.name = $"PlayedSlot_{playAreaSlots.Count}";
             RectTransform slotRect = slotObject.GetComponent<RectTransform>();
-            createdSlots.Add(slotRect);
+            slotObject.SetActive(false);
+            playAreaSlots.Add(slotRect);
         }
 
-        Canvas.ForceUpdateCanvases();
+        for (int i = 0; i < playAreaSlots.Count; i++)
+        {
+            RectTransform slot = playAreaSlots[i];
+            if (slot == null)
+                continue;
+
+            bool isActive = i < count;
+            if (slot.gameObject.activeSelf != isActive)
+                slot.gameObject.SetActive(isActive);
+
+            if (!isActive)
+                continue;
+
+            slot.SetSiblingIndex(i);
+            activeSlots.Add(slot);
+        }
+
         LayoutRebuilder.ForceRebuildLayoutImmediate(playArea);
-        return createdSlots;
+        return activeSlots;
+    }
+
+    private GameObject GetOrCreateDisplayCard(RectTransform targetSlot)
+    {
+        if (targetSlot == null || cardPrefab == null)
+            return null;
+
+        for (int i = 0; i < targetSlot.childCount; i++)
+        {
+            Transform child = targetSlot.GetChild(i);
+            if (child == null)
+                continue;
+
+            Card existingCard = child.GetComponent<Card>();
+            if (existingCard != null && !existingCard.enabled)
+                return child.gameObject;
+        }
+
+        GameObject cardObject = Instantiate(cardPrefab, targetSlot);
+        Card card = cardObject.GetComponent<Card>();
+        if (card != null)
+        {
+            card.KillTweens();
+            card.SetSelected(false, false);
+            card.SetReturning(false);
+            card.SnapToLocal(Vector2.zero);
+            card.SnapScale(Vector3.one);
+            card.SetInteractionEnabled(false);
+            card.enabled = false;
+        }
+
+        Button button = cardObject.GetComponent<Button>();
+        if (button != null)
+        {
+            button.enabled = true;
+            button.interactable = false;
+        }
+
+        Image rootImage = cardObject.GetComponent<Image>();
+        if (rootImage != null)
+        {
+            rootImage.enabled = true;
+            rootImage.color = Color.white;
+        }
+
+        return cardObject;
     }
 
     private int GetCenteredStartIndex(int cardCount)

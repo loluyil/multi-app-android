@@ -11,6 +11,8 @@ using UnityEditor;
 
 public class ThirteenDeckDealer : MonoBehaviour
 {
+    private const int CardsPerSeat = 13;
+
     [System.Serializable]
     private struct CardSpriteEntry
     {
@@ -45,6 +47,9 @@ public class ThirteenDeckDealer : MonoBehaviour
     [SerializeField] private List<Card.CardData> opponentHandC = new List<Card.CardData>();
 
     private readonly Dictionary<string, Sprite> spriteLookup = new Dictionary<string, Sprite>();
+    private readonly Dictionary<RectTransform, List<GameObject>> opponentCardPools = new Dictionary<RectTransform, List<GameObject>>();
+    private readonly Dictionary<RectTransform, int> opponentVisibleCounts = new Dictionary<RectTransform, int>();
+    private readonly Queue<GameObject> tweenCardPool = new Queue<GameObject>();
     private Coroutine dealCoroutine;
 
     public IReadOnlyDictionary<string, Sprite> SpriteLookup => spriteLookup;
@@ -73,6 +78,7 @@ public class ThirteenDeckDealer : MonoBehaviour
     {
         AutoAssignSceneReferences();
         RebuildSpriteLookup();
+        InitializeCardPools();
     }
 
     private void Start()
@@ -126,9 +132,9 @@ public class ThirteenDeckDealer : MonoBehaviour
     {
         IsDealing = true;
 
-        ClearOpponentContainer(player2Container);
-        ClearOpponentContainer(player3Container);
-        ClearOpponentContainer(player4Container);
+        ClearOpponentContainer(player2Container, true);
+        ClearOpponentContainer(player3Container, false);
+        ClearOpponentContainer(player4Container, true);
 
         if (playerHandHolder != null)
             playerHandHolder.PrepareDealPreview(playerHand.Count);
@@ -160,7 +166,7 @@ public class ThirteenDeckDealer : MonoBehaviour
             if (targetContainer == null || cardBackPrefab == null)
                 continue;
 
-            GameObject dealCard = Instantiate(cardBackPrefab, tweenLayer);
+            GameObject dealCard = GetTweenCard(tweenLayer, $"DealTween_{i}");
             dealCard.name = $"DealTween_{i}";
 
             RectTransform dealRect = dealCard.GetComponent<RectTransform>();
@@ -192,7 +198,7 @@ public class ThirteenDeckDealer : MonoBehaviour
                 dealRect.DOLocalRotate(Vector3.zero, dealTweenDuration).SetEase(Ease.OutQuad)
                     .OnComplete(() =>
                     {
-                        Destroy(dealCard);
+                        ReleaseTweenCard(dealCard);
 
                         if (playerHandHolder != null && capturedPlayerIndex < playerHand.Count)
                             playerHandHolder.AnimateDealPreviewCard(playerHand[capturedPlayerIndex], spriteLookup, deckRect.position, capturedPlayerIndex);
@@ -203,7 +209,7 @@ public class ThirteenDeckDealer : MonoBehaviour
                 dealRect.DOLocalRotate(new Vector3(0f, 0f, endRotation), dealTweenDuration).SetEase(Ease.OutQuad)
                     .OnComplete(() =>
                     {
-                        Destroy(dealCard);
+                        ReleaseTweenCard(dealCard);
 
                         RectTransform container = GetContainerForSeat(capturedSeat);
                         if (container != null)
@@ -223,39 +229,14 @@ public class ThirteenDeckDealer : MonoBehaviour
         OnDealComplete?.Invoke();
     }
 
-    private void ClearOpponentContainer(RectTransform container)
+    private void ClearOpponentContainer(RectTransform container, bool isSidePlayer)
     {
-        if (container == null) return;
-        for (int i = container.childCount - 1; i >= 0; i--)
-            Destroy(container.GetChild(i).gameObject);
+        SetOpponentHandVisualCount(container, 0, isSidePlayer);
     }
 
     private void AddOneCardBack(RectTransform container, bool isSidePlayer, int totalCount)
     {
-        if (container == null || cardBackPrefab == null) return;
-
-        GameObject cardBack = Instantiate(cardBackPrefab, container);
-        cardBack.name = $"CardBack_{totalCount - 1}";
-
-        Card card = cardBack.GetComponent<Card>();
-        if (card != null) { card.SetInteractionEnabled(false, false); card.enabled = false; }
-
-        Button button = cardBack.GetComponent<Button>();
-        if (button != null) { button.transition = Selectable.Transition.None; button.enabled = false; }
-
-        CanvasGroup canvasGroup = cardBack.GetComponent<CanvasGroup>();
-        if (canvasGroup != null)
-        {
-            canvasGroup.interactable = true;
-            canvasGroup.blocksRaycasts = false;
-            canvasGroup.alpha = 1f;
-        }
-
-        Image image = cardBack.GetComponent<Image>();
-        if (image != null) image.color = Color.white;
-
-        ConfigureCardBackTransform(cardBack.GetComponent<RectTransform>(), isSidePlayer);
-        ResizeContainerToFit(container, totalCount);
+        SetOpponentHandVisualCount(container, totalCount, isSidePlayer);
     }
 
     public IReadOnlyList<Card.CardData> GetPlayerHand() => playerHand;
@@ -360,47 +341,146 @@ public class ThirteenDeckDealer : MonoBehaviour
 
     private void PopulateOpponentHand(RectTransform container, int count, bool isSidePlayer)
     {
+        SetOpponentHandVisualCount(container, count, isSidePlayer);
+    }
+
+    private void InitializeCardPools()
+    {
+        InitializeOpponentPool(player2Container, true);
+        InitializeOpponentPool(player3Container, false);
+        InitializeOpponentPool(player4Container, true);
+    }
+
+    private void InitializeOpponentPool(RectTransform container, bool isSidePlayer)
+    {
         if (container == null || cardBackPrefab == null)
             return;
 
-        for (int i = container.childCount - 1; i >= 0; i--)
-            Destroy(container.GetChild(i).gameObject);
+        bool isNewPool = !opponentCardPools.TryGetValue(container, out List<GameObject> pool);
+        if (isNewPool)
+        {
+            pool = new List<GameObject>(CardsPerSeat);
+            opponentCardPools[container] = pool;
+        }
 
-        for (int i = 0; i < count; i++)
+        for (int i = pool.Count; i < CardsPerSeat; i++)
         {
             GameObject cardBack = Instantiate(cardBackPrefab, container);
             cardBack.name = $"CardBack_{i}";
-
-            Card card = cardBack.GetComponent<Card>();
-            if (card != null)
-            {
-                card.SetInteractionEnabled(false, false);
-                card.enabled = false;
-            }
-
-            Button button = cardBack.GetComponent<Button>();
-            if (button != null)
-            {
-                button.transition = Selectable.Transition.None;
-                button.enabled = false;
-            }
-
-            CanvasGroup canvasGroup = cardBack.GetComponent<CanvasGroup>();
-            if (canvasGroup != null)
-            {
-                canvasGroup.interactable = true;
-                canvasGroup.blocksRaycasts = false;
-                canvasGroup.alpha = 1f;
-            }
-
-            Image image = cardBack.GetComponent<Image>();
-            if (image != null)
-                image.color = Color.white;
-
-            ConfigureCardBackTransform(cardBack.GetComponent<RectTransform>(), isSidePlayer);
+            PreparePooledCardBack(cardBack, isSidePlayer);
+            cardBack.SetActive(false);
+            pool.Add(cardBack);
         }
 
-        ResizeContainerToFit(container, count);
+        if (isNewPool)
+        {
+            opponentVisibleCounts[container] = 0;
+            ResizeContainerToFit(container, 0);
+        }
+    }
+
+    private void SetOpponentHandVisualCount(RectTransform container, int count, bool isSidePlayer)
+    {
+        if (container == null || cardBackPrefab == null)
+            return;
+
+        InitializeOpponentPool(container, isSidePlayer);
+
+        int clampedCount = Mathf.Clamp(count, 0, CardsPerSeat);
+        if (opponentVisibleCounts.TryGetValue(container, out int currentCount) && currentCount == clampedCount)
+            return;
+
+        List<GameObject> pool = opponentCardPools[container];
+        for (int i = 0; i < pool.Count; i++)
+        {
+            GameObject cardBack = pool[i];
+            if (cardBack == null)
+                continue;
+
+            bool isVisible = i < clampedCount;
+            if (cardBack.activeSelf != isVisible)
+                cardBack.SetActive(isVisible);
+
+            if (isVisible)
+            {
+                cardBack.transform.SetSiblingIndex(i);
+                ConfigureCardBackTransform(cardBack.GetComponent<RectTransform>(), isSidePlayer);
+            }
+        }
+
+        opponentVisibleCounts[container] = clampedCount;
+        ResizeContainerToFit(container, clampedCount);
+    }
+
+    private GameObject GetTweenCard(Transform parent, string objectName)
+    {
+        GameObject tweenCard = tweenCardPool.Count > 0 ? tweenCardPool.Dequeue() : Instantiate(cardBackPrefab);
+        tweenCard.name = objectName;
+        tweenCard.transform.SetParent(parent, false);
+        tweenCard.SetActive(true);
+        PrepareTweenCard(tweenCard);
+        return tweenCard;
+    }
+
+    private void ReleaseTweenCard(GameObject tweenCard)
+    {
+        if (tweenCard == null)
+            return;
+
+        tweenCard.transform.DOKill();
+        tweenCard.SetActive(false);
+        tweenCard.transform.SetParent(transform, false);
+        tweenCardPool.Enqueue(tweenCard);
+    }
+
+    private void PreparePooledCardBack(GameObject cardBack, bool isSidePlayer)
+    {
+        if (cardBack == null)
+            return;
+
+        PrepareTweenCard(cardBack);
+        ConfigureCardBackTransform(cardBack.GetComponent<RectTransform>(), isSidePlayer);
+    }
+
+    private static void PrepareTweenCard(GameObject cardBack)
+    {
+        if (cardBack == null)
+            return;
+
+        Card card = cardBack.GetComponent<Card>();
+        if (card != null)
+        {
+            card.SetInteractionEnabled(false, false);
+            card.enabled = false;
+        }
+
+        Button button = cardBack.GetComponent<Button>();
+        if (button != null)
+        {
+            button.transition = Selectable.Transition.None;
+            button.enabled = false;
+            button.interactable = false;
+        }
+
+        CanvasGroup canvasGroup = cardBack.GetComponent<CanvasGroup>();
+        if (canvasGroup != null)
+        {
+            canvasGroup.interactable = false;
+            canvasGroup.blocksRaycasts = false;
+            canvasGroup.alpha = 1f;
+        }
+
+        Image image = cardBack.GetComponent<Image>();
+        if (image != null)
+            image.color = Color.white;
+
+        RectTransform rectTransform = cardBack.GetComponent<RectTransform>();
+        if (rectTransform != null)
+        {
+            rectTransform.anchoredPosition = Vector2.zero;
+            rectTransform.localScale = Vector3.one;
+            rectTransform.localRotation = Quaternion.identity;
+        }
     }
 
     private void ResizeContainerToFit(RectTransform container, int cardCount)

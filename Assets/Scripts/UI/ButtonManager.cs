@@ -28,6 +28,9 @@ public class ButtonManager : MonoBehaviour
     [SerializeField] private Button boardCloseButton;
 
     public SudokuLogic sudokuLogic;
+    private TMP_Text difficultyLabel;
+    private SudokuLogic.DifficultyLevel lastShownDifficulty;
+    private bool lastEraseMode;
 
     void Start()
     {
@@ -48,17 +51,20 @@ public class ButtonManager : MonoBehaviour
         if (boardPanel != null)
             boardPanel.SetActive(false);
 
+        difficultyLabel = difficultyButton != null ? difficultyButton.GetComponentInChildren<TMP_Text>() : null;
         AddPopToSceneButtons();
         ConfigureReturnHold();
+        RefreshDifficultyUi(true);
+        UpdateEraseVisual(true);
     }
 
     void Update()
     {
         sudokuLogic.currentDifficulty = GameSettings._difficulty;
-        difficultyButton.GetComponentInChildren<TMP_Text>().text = GameSettings._difficulty.ToString();
+        RefreshDifficultyUi(false);
 
         // Keep eraser visual in sync — if a number is selected, eraser is off
-        UpdateEraseVisual();
+        UpdateEraseVisual(false);
     }
 
     void SolveOnClick()
@@ -89,7 +95,7 @@ public class ButtonManager : MonoBehaviour
             sudokuLogic.SetEraseMode();
         }
 
-        UpdateEraseVisual();
+        UpdateEraseVisual(true);
         PopButton(eraseButton);
     }
 
@@ -99,7 +105,7 @@ public class ButtonManager : MonoBehaviour
         if (sudokuLogic.IsEraseMode())
         {
             sudokuLogic.ClearEraseMode();
-            UpdateEraseVisual();
+            UpdateEraseVisual(true);
         }
 
         sudokuLogic.TogglePencilMode();
@@ -150,7 +156,7 @@ public class ButtonManager : MonoBehaviour
         else
             GameSettings._difficulty = SudokuLogic.DifficultyLevel.Easy;
 
-        difficultyButton.GetComponentInChildren<TMP_Text>().text = GameSettings._difficulty.ToString();
+        RefreshDifficultyUi(true);
     }
 
     void BoardOnClick()
@@ -171,9 +177,30 @@ public class ButtonManager : MonoBehaviour
 
     // ───────────────────────── Visual Helpers ─────────────────────────
 
-    private void UpdateEraseVisual()
+    private void UpdateEraseVisual(bool force)
     {
-        eraseButton.image.sprite = sudokuLogic.IsEraseMode() ? eraserActiveSprite : eraserDefaultSprite;
+        if (eraseButton == null || sudokuLogic == null)
+            return;
+
+        bool eraseMode = sudokuLogic.IsEraseMode();
+        if (!force && eraseMode == lastEraseMode)
+            return;
+
+        lastEraseMode = eraseMode;
+        eraseButton.image.sprite = eraseMode ? eraserActiveSprite : eraserDefaultSprite;
+    }
+
+    private void RefreshDifficultyUi(bool force)
+    {
+        if (difficultyLabel == null)
+            return;
+
+        SudokuLogic.DifficultyLevel difficulty = GameSettings._difficulty;
+        if (!force && difficulty == lastShownDifficulty)
+            return;
+
+        lastShownDifficulty = difficulty;
+        difficultyLabel.text = difficulty.ToString();
     }
 
     private void UpdatePencilVisual()
@@ -211,7 +238,7 @@ public class ButtonManager : MonoBehaviour
         if (holdToSceneLoad == null)
             holdToSceneLoad = returnPanel.gameObject.AddComponent<HoldToSceneLoad>();
 
-        holdToSceneLoad.Configure(AppSceneNames.MainMenu, 2.25f);
+        holdToSceneLoad.Configure(AppSceneNames.MainMenu);
     }
 
     private static Transform FindSceneTransform(string objectName)
