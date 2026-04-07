@@ -1402,7 +1402,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -0.6156006, y: -392.56006}
+  m_AnchoredPosition: {x: -0.6156006, y: -392.56}
   m_SizeDelta: {x: -60.658, y: -909.145}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &904281224
@@ -2849,13 +2849,13 @@ MonoBehaviour:
   grids:
   - gridSize: {x: 9, y: 9}
     enabled: 1
-    thickness: 1.26
+    thickness: 1.37
     color: {r: 0, g: 0, b: 0, a: 1}
     adjustEdges: 0
     edgeReduction: {x: 20, y: 20}
   - gridSize: {x: 3, y: 3}
     enabled: 1
-    thickness: 2.54
+    thickness: 3.73
     color: {r: 0, g: 0, b: 0, a: 1}
     adjustEdges: 1
     edgeReduction: {x: -1.22, y: -1.43}

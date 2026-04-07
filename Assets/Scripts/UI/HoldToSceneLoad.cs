@@ -6,14 +6,16 @@ using UnityEngine.EventSystems;
 public class HoldToSceneLoad : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
 {
     [SerializeField] private string targetSceneName = AppSceneNames.MainMenu;
-    [SerializeField] private float holdDuration = 1.5f;
+    [SerializeField] private float holdDuration = .25f;
 
     private Coroutine holdCoroutine;
 
-    public void Configure(string sceneName, float durationSeconds)
+    //Only overrides the destination scene. The hold duration is intentionally left alone
+    //so the serialized Inspector value stays authoritative and callers can't silently
+    //clobber a designer-tuned value at runtime.
+    public void Configure(string sceneName)
     {
         targetSceneName = sceneName;
-        holdDuration = durationSeconds;
     }
 
     public void OnPointerDown(PointerEventData eventData)

@@ -949,9 +949,9 @@ MonoBehaviour:
   deckDealer: {fileID: 1882764822}
   localHandHolder: {fileID: 1595757205}
   passButton: {fileID: 1483447660}
-  leaveButton: {fileID: 0}
-  confirmLeaveYesButton: {fileID: 0}
-  confirmLeaveNoButton: {fileID: 0}
+  leaveButton: {fileID: 1643121286}
+  confirmLeaveYesButton: {fileID: 1900216198}
+  confirmLeaveNoButton: {fileID: 1152297404}
   leavePromptText: {fileID: 0}
   localPlayerSeat: 0
   startingSeat: 0
@@ -1168,11 +1168,11 @@ MonoBehaviour:
   dealStartScale: 0.8
   dragScale: 1.15
   shadowOffset: {x: 0, y: -30}
-  multiDragSeparation: 130
   shiftEase: 9
   returnEase: 9
   playAreaEase: 9
   dragScaleEase: 6
+  multiDragSeparation: 55.6
 --- !u!1 &1643121284
 GameObject:
   m_ObjectHideFlags: 0

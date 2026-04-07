@@ -23,11 +23,36 @@ public class HorizontalCardHolder : MonoBehaviour
     [SerializeField] private float dealStartScale = 0.8f;
     [SerializeField] private float dragScale = 1.08f;
     [SerializeField] private Vector2 shadowOffset = new Vector2(0f, -18f);
-    [SerializeField] private float multiDragSeparation = 42f;
     [SerializeField] private Ease shiftEase = Ease.OutCubic;
     [SerializeField] private Ease returnEase = Ease.OutCubic;
     [SerializeField] private Ease playAreaEase = Ease.OutCubic;
     [SerializeField] private Ease dragScaleEase = Ease.OutQuad;
+
+    [Header("Multi-Drag")]
+    [Tooltip("Horizontal spacing (in local units) between cards while a multi-selected group is being dragged. " +
+             "Larger = more fan-out between the held cards; 0 = perfectly stacked on the cursor.")]
+    [Range(0f, 200f)]
+    [SerializeField] private float multiDragSeparation = 42f;
+
+    [Tooltip("How long the non-dragged group cards take to fly in and gather around the dragged card " +
+             "at the start of a multi-drag. Set to 0 for an instant snap (the old behaviour).")]
+    [Range(0f, 1f)]
+    [SerializeField] private float gatherDuration = 0.18f;
+
+    [Tooltip("Easing curve used while the grouped cards are gathering into place around the dragged card.")]
+    [SerializeField] private Ease gatherEase = Ease.OutCubic;
+
+    public float MultiDragSeparation
+    {
+        get => multiDragSeparation;
+        set => multiDragSeparation = Mathf.Max(0f, value);
+    }
+
+    // Cards currently mid-gather. While a card is in this set, UpdateGroupedCardPosition
+    // must not hard-set its position, otherwise the per-frame drag update fights the tween.
+    private readonly HashSet<Card> gatheringCards = new HashSet<Card>();
+    // Active gather tweens so we can kill them all on OnEndDrag / a fresh OnBeginDrag.
+    private readonly List<Tween> gatherTweens = new List<Tween>();
 
     private readonly List<Card> cards = new List<Card>();
     private readonly List<RectTransform> slots = new List<RectTransform>();
@@ -357,6 +382,9 @@ public class HorizontalCardHolder : MonoBehaviour
         if (card == null || !handInteractionEnabled)
             return;
 
+        //Safety: a brand new drag should never inherit gather state from a previous one.
+        KillGatherTweens();
+
         draggedCard = card;
         activeDragGroup.Clear();
         activeDragGroup.AddRange(GetDragGroup(card));
@@ -377,19 +405,74 @@ public class HorizontalCardHolder : MonoBehaviour
             dragCard.ShowShadow(dragLayer, shadowOffset);
 
             if (dragCard == draggedCard)
+            {
                 dragCard.TweenScale(Vector3.one * dragScale, shiftDuration, dragScaleEase);
-            else
+            }
+            else if (gatherDuration <= 0f)
+            {
+                //Instant snap path - preserves old behaviour when the tween is disabled.
                 UpdateGroupedCardPosition(dragCard, i);
+            }
+            else
+            {
+                StartGatherTween(dragCard, i);
+            }
         }
 
         UpdateDragGroupLayering();
         ArrangeCards(false);
     }
 
+    //Tween a non-dragged group card from its current world position to the live target
+    //(dragged card position + group offset). The target is recomputed every frame inside
+    //OnUpdate so the gather point follows the cursor if the player is already moving it.
+    private void StartGatherTween(Card dragCard, int groupIndex)
+    {
+        if (dragCard == null || draggedCard == null)
+            return;
+
+        Vector3 startWorldPos = dragCard.RectTransform.position;
+        int localGroupIndex = groupIndex; //capture for closure
+        Card localCard = dragCard;        //capture for closure
+
+        gatheringCards.Add(dragCard);
+
+        Tween gatherTween = DOVirtual.Float(0f, 1f, gatherDuration, t =>
+        {
+            if (localCard == null || draggedCard == null)
+                return;
+
+            float offsetX = (localGroupIndex - draggedCardGroupIndex) * multiDragSeparation;
+            Vector3 liveTarget = draggedCard.RectTransform.position + new Vector3(offsetX, 0f, 0f);
+            localCard.RectTransform.position = Vector3.LerpUnclamped(startWorldPos, liveTarget, t);
+        })
+        .SetEase(gatherEase)
+        .OnKill(() => gatheringCards.Remove(localCard))
+        .OnComplete(() => gatheringCards.Remove(localCard));
+
+        gatherTweens.Add(gatherTween);
+    }
+
+    private void KillGatherTweens()
+    {
+        for (int i = 0; i < gatherTweens.Count; i++)
+        {
+            Tween tween = gatherTweens[i];
+            if (tween != null && tween.IsActive())
+                tween.Kill();
+        }
+        gatherTweens.Clear();
+        gatheringCards.Clear();
+    }
+
     private void OnEndDrag(Card card)
     {
         if (card == null || previewIndex < 0)
             return;
+
+        //The return-to-slot tweens are about to take over - cancel any in-progress gather
+        //so the two tween systems don't fight over the same RectTransform.position.
+        KillGatherTweens();
 
         if (TryPlayDragGroup())
         {
@@ -711,6 +794,11 @@ public class HorizontalCardHolder : MonoBehaviour
 
     private void UpdateGroupedCardPosition(Card groupedCard, int groupIndex)
     {
+        //While a card is still flying in from the gather tween, leave its position alone -
+        //the tween owns it and re-samples the dragged card's live position each frame.
+        if (gatheringCards.Contains(groupedCard))
+            return;
+
         float offsetX = (groupIndex - draggedCardGroupIndex) * multiDragSeparation;
         groupedCard.RectTransform.position = draggedCard.RectTransform.position + new Vector3(offsetX, 0f, 0f);
     }

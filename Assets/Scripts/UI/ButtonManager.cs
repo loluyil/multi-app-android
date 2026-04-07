@@ -211,7 +211,7 @@ public class ButtonManager : MonoBehaviour
         if (holdToSceneLoad == null)
             holdToSceneLoad = returnPanel.gameObject.AddComponent<HoldToSceneLoad>();
 
-        holdToSceneLoad.Configure(AppSceneNames.MainMenu, 2.25f);
+        holdToSceneLoad.Configure(AppSceneNames.MainMenu);
     }
 
     private static Transform FindSceneTransform(string objectName)
