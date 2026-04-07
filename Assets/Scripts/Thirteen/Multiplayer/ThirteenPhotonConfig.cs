@@ -15,6 +15,7 @@ public sealed class ThirteenPhotonConfigData
 public static class ThirteenPhotonConfig
 {
     private const string ResourceName = "ThirteenPhotonConfig";
+    private const string TemplateResourceName = "ThirteenPhotonConfig.template";
     private static ThirteenPhotonConfigData cached;
 
     public static ThirteenPhotonConfigData Load()
@@ -23,6 +24,9 @@ public static class ThirteenPhotonConfig
             return cached;
 
         TextAsset configAsset = Resources.Load<TextAsset>(ResourceName);
+        if (configAsset == null || string.IsNullOrWhiteSpace(configAsset.text))
+            configAsset = Resources.Load<TextAsset>(TemplateResourceName);
+
         if (configAsset == null || string.IsNullOrWhiteSpace(configAsset.text))
         {
             cached = new ThirteenPhotonConfigData();
