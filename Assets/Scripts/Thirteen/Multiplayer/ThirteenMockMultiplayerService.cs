@@ -14,6 +14,7 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
 
     public ThirteenLobbyState CurrentLobby => currentLobby;
     public bool IsConnected => currentLobby != null;
+    public bool IsBusy => false;
     public int LobbyRevision => lobbyRevision;
     public string LastStatus => lastStatus;
     public int StatusRevision => statusRevision;

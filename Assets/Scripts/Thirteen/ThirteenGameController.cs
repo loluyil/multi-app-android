@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using DG.Tweening;
 using TMPro;
 
@@ -14,9 +15,8 @@ public class ThirteenGameController : MonoBehaviour
     [SerializeField] private Button passButton;
     [SerializeField] private Button leaveButton;
     [SerializeField] private Button rematchButton;
-    [SerializeField] private Button confirmLeaveYesButton;
-    [SerializeField] private Button confirmLeaveNoButton;
     [SerializeField] private TMP_Text leavePromptText;
+    [SerializeField] private Color leaveConfirmColor = new Color(1f, 0.25f, 0.25f, 1f);
 
     [Header("Game UI Text")]
     [SerializeField] private TMP_Text turnPhaseText;
@@ -49,6 +49,10 @@ public class ThirteenGameController : MonoBehaviour
     [SerializeField] private float botTweenDuration = 0.35f;
     [SerializeField] private Ease botTweenEase = Ease.OutCubic;
     [SerializeField] private float botCardSpacing = 42f;
+
+    [Header("Rematch Fade")]
+    [SerializeField] private float rematchFadeDuration = 0.25f;
+    [SerializeField] private Color rematchFadeColor = new Color(0f, 0f, 0f, 1f);
 
     [Header("Screen Shake")]
     [Tooltip("Transform that gets shaken on dramatic plays. If null, the root canvas transform is used.")]
@@ -112,9 +116,17 @@ public class ThirteenGameController : MonoBehaviour
     private readonly Dictionary<int, string> seatToPlayerId = new Dictionary<int, string>();
     private readonly Dictionary<string, int> playerIdToSeat = new Dictionary<string, int>();
     private string leavePromptDefaultText = "leave";
+    private bool leaveConfirmArmed;
+    private Graphic leaveButtonGraphic;
+    private Color leaveButtonDefaultColor = Color.white;
     private Coroutine rematchCoroutine;
     private int rematchSequence;
     private bool rematchInProgress;
+    private float nextRematchAllowedTime;
+    private const float RematchSpamCooldown = 0.35f;
+    private CanvasGroup rematchFadeGroup;
+    private Image rematchFadeImage;
+    private float shakeBlockUntilTime;
 
     private void Awake()
     {
@@ -198,6 +210,8 @@ public class ThirteenGameController : MonoBehaviour
 
     private void Update()
     {
+        HandleLeaveButtonReset();
+
         if (!isMultiplayer || mpService == null || matchState == null)
             return;
 
@@ -251,11 +265,6 @@ public class ThirteenGameController : MonoBehaviour
         if (rematchButton != null)
             rematchButton.onClick.RemoveListener(OnRematchButtonClicked);
 
-        if (confirmLeaveYesButton != null)
-            confirmLeaveYesButton.onClick.RemoveListener(OnConfirmLeaveYesClicked);
-
-        if (confirmLeaveNoButton != null)
-            confirmLeaveNoButton.onClick.RemoveListener(OnConfirmLeaveNoClicked);
     }
 
     private void ResolveUiReferences()
@@ -266,22 +275,22 @@ public class ThirteenGameController : MonoBehaviour
         if (rematchButton == null)
             rematchButton = FindButton("RematchButton");
 
-        if (confirmLeaveYesButton == null)
-            confirmLeaveYesButton = FindButton("YesButton");
-
-        if (confirmLeaveNoButton == null)
-            confirmLeaveNoButton = FindButton("NoButton");
-
         if (leavePromptText == null && leaveButton != null)
             leavePromptText = leaveButton.GetComponentInChildren<TMP_Text>(true);
 
         if (leavePromptText != null && !string.IsNullOrWhiteSpace(leavePromptText.text))
             leavePromptDefaultText = leavePromptText.text;
 
+        if (leaveButton != null)
+        {
+            leaveButtonGraphic = leaveButton.targetGraphic;
+            if (leaveButtonGraphic != null)
+                leaveButtonDefaultColor = leaveButtonGraphic.color;
+        }
+
         AttachButtonPop(leaveButton);
         AttachButtonPop(rematchButton);
-        AttachButtonPop(confirmLeaveYesButton);
-        AttachButtonPop(confirmLeaveNoButton);
+        EnsureRematchFadeOverlay();
     }
 
     private void WireLeaveUi()
@@ -298,69 +307,93 @@ public class ThirteenGameController : MonoBehaviour
             rematchButton.onClick.AddListener(OnRematchButtonClicked);
         }
 
-        if (confirmLeaveYesButton != null)
-        {
-            confirmLeaveYesButton.onClick.RemoveListener(OnConfirmLeaveYesClicked);
-            confirmLeaveYesButton.onClick.AddListener(OnConfirmLeaveYesClicked);
-        }
-
-        if (confirmLeaveNoButton != null)
-        {
-            confirmLeaveNoButton.onClick.RemoveListener(OnConfirmLeaveNoClicked);
-            confirmLeaveNoButton.onClick.AddListener(OnConfirmLeaveNoClicked);
-        }
     }
 
     private void OnLeaveButtonClicked()
     {
-        if (confirmLeaveYesButton != null)
-            confirmLeaveYesButton.gameObject.SetActive(true);
+        if (leaveConfirmArmed)
+        {
+            AppSceneLoader.Load(AppSceneNames.ThirteenMenu);
+            return;
+        }
 
-        if (confirmLeaveNoButton != null)
-            confirmLeaveNoButton.gameObject.SetActive(true);
-
+        leaveConfirmArmed = true;
         if (leavePromptText != null)
-            leavePromptText.text = "you sure?";
-    }
+            leavePromptText.text = "r u sure?";
 
-    private void OnConfirmLeaveYesClicked()
-    {
-        AppSceneLoader.Load(AppSceneNames.ThirteenMenu);
-    }
-
-    private void OnConfirmLeaveNoClicked()
-    {
-        HideLeaveConfirmation();
+        if (leaveButtonGraphic != null)
+            leaveButtonGraphic.color = leaveConfirmColor;
     }
 
     private void HideLeaveConfirmation()
     {
-        if (confirmLeaveYesButton != null)
-            confirmLeaveYesButton.gameObject.SetActive(false);
-
-        if (confirmLeaveNoButton != null)
-            confirmLeaveNoButton.gameObject.SetActive(false);
+        leaveConfirmArmed = false;
 
         if (leavePromptText != null)
             leavePromptText.text = leavePromptDefaultText;
+
+        if (leaveButtonGraphic != null)
+            leaveButtonGraphic.color = leaveButtonDefaultColor;
+    }
+
+    private void HandleLeaveButtonReset()
+    {
+        if (!leaveConfirmArmed || leaveButton == null)
+            return;
+
+        bool clickedElsewhere = Input.GetMouseButtonDown(0) && !IsPointerOverLeaveButton();
+        bool lostSelectedFocus = EventSystem.current != null
+            && EventSystem.current.currentSelectedGameObject != null
+            && !EventSystem.current.currentSelectedGameObject.transform.IsChildOf(leaveButton.transform);
+
+        if (clickedElsewhere || lostSelectedFocus)
+            HideLeaveConfirmation();
+    }
+
+    private bool IsPointerOverLeaveButton()
+    {
+        if (leaveButton == null)
+            return false;
+
+        RectTransform rect = leaveButton.transform as RectTransform;
+        if (rect == null)
+            return false;
+
+        Canvas canvas = leaveButton.GetComponentInParent<Canvas>();
+        Camera eventCamera = canvas != null ? canvas.worldCamera : null;
+        return RectTransformUtility.RectangleContainsScreenPoint(rect, Input.mousePosition, eventCamera);
     }
 
     private void HideRematchButton()
     {
         if (rematchButton != null)
+        {
+            rematchButton.interactable = false;
             rematchButton.gameObject.SetActive(false);
+        }
     }
 
     private void ShowRematchButton()
     {
         if (rematchButton != null)
+        {
+            rematchButton.interactable = !rematchInProgress;
             rematchButton.gameObject.SetActive(true);
+        }
     }
 
     private void OnRematchButtonClicked()
     {
+        if (Time.unscaledTime < nextRematchAllowedTime)
+            return;
+
+        nextRematchAllowedTime = Time.unscaledTime + RematchSpamCooldown;
+
         if (rematchInProgress)
             return;
+
+        if (rematchButton != null)
+            rematchButton.interactable = false;
 
         if (!isMultiplayer || mpService == null)
         {
@@ -435,6 +468,7 @@ public class ThirteenGameController : MonoBehaviour
             return false;
         }
 
+        ThirteenRules.AnalyzedHand previousHand = matchState.CurrentHand;
         ThirteenMatchState.PlayResult result = matchState.TryPlay(localPlayerSeat, sortedCards);
         if (!result.Success)
         {
@@ -459,7 +493,7 @@ public class ThirteenGameController : MonoBehaviour
             }
         }
 
-        CompletePlay(localPlayerSeat, sortedCards, draggedCards);
+        CompletePlay(localPlayerSeat, sortedCards, draggedCards, previousHand);
         return true;
     }
 
@@ -673,10 +707,15 @@ public class ThirteenGameController : MonoBehaviour
             target.localPosition = shakeOrigin;
         }
 
+        float duration = ComputeShakeDuration(strength);
+        float settleDuration = ComputeShakeSettleDuration(strength);
+        float cooldownDuration = ComputeShakeCooldownDuration(strength);
+        shakeBlockUntilTime = Mathf.Max(shakeBlockUntilTime, Time.unscaledTime + duration + settleDuration + cooldownDuration);
+
         if (shakeCoroutine != null)
             StopCoroutine(shakeCoroutine);
 
-        shakeCoroutine = StartCoroutine(ShakeRoutine(target, strength, ComputeShakeDuration(strength)));
+        shakeCoroutine = StartCoroutine(ShakeRoutine(target, strength, duration));
     }
 
     private float ComputeShakeDuration(float strength)
@@ -686,14 +725,24 @@ public class ThirteenGameController : MonoBehaviour
         return shakeDuration * durationMultiplier;
     }
 
+    private float ComputeShakeSettleDuration(float strength)
+    {
+        return Mathf.Lerp(0.04f, 0.2f, Mathf.Clamp01(strength / Mathf.Max(0.01f, shakeDurationMaxStrength)));
+    }
+
+    private float ComputeShakeCooldownDuration(float strength)
+    {
+        return Mathf.Lerp(0.06f, 0.24f, Mathf.Clamp01(strength / Mathf.Max(0.01f, shakeDurationMaxStrength)));
+    }
+
     private IEnumerator ShakeRoutine(Transform target, float strength, float duration)
     {
         float magnitude = strength * shakeBasePixels;
         float elapsed = 0f;
         while (elapsed < duration)
         {
-            float remaining = 1f - (elapsed / duration);
-            float m = magnitude * remaining;
+            float normalized = elapsed / duration;
+            float m = magnitude * (1f - (normalized * normalized));
             target.localPosition = shakeOrigin + new Vector3(
                 Random.Range(-m, m),
                 Random.Range(-m, m),
@@ -702,7 +751,22 @@ public class ThirteenGameController : MonoBehaviour
             yield return null;
         }
 
+        float settleDuration = ComputeShakeSettleDuration(strength);
+        float settleElapsed = 0f;
+        Vector3 settleStart = target.localPosition;
+        while (settleElapsed < settleDuration)
+        {
+            float t = settleElapsed / settleDuration;
+            target.localPosition = Vector3.LerpUnclamped(settleStart, shakeOrigin, t);
+            settleElapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
         target.localPosition = shakeOrigin;
+        float cooldownDuration = ComputeShakeCooldownDuration(strength);
+        if (cooldownDuration > 0f)
+            yield return new WaitForSecondsRealtime(cooldownDuration);
+
         shakeCoroutine = null;
     }
 
@@ -727,8 +791,16 @@ public class ThirteenGameController : MonoBehaviour
                 if (hand.PrimaryRankStrength == ThirteenRules.GetRankStrength(2))
                     return ThirteenCommentaryStrings.CommentaryPlayedTwo;
                 return null;
+            case ThirteenRules.HandType.Triple:
+                return hand.PrimaryRankStrength == ThirteenRules.GetRankStrength(2)
+                    ? ThirteenCommentaryStrings.CommentaryTripleTwo
+                    : ThirteenCommentaryStrings.CommentaryTriple;
             case ThirteenRules.HandType.FourOfAKind:
-                return ThirteenCommentaryStrings.CommentaryFourOfAKind;
+                return hand.PrimaryRankStrength == ThirteenRules.GetRankStrength(2)
+                    ? ThirteenCommentaryStrings.CommentaryFourTwos
+                    : ThirteenCommentaryStrings.CommentaryFourOfAKind;
+            case ThirteenRules.HandType.PairSequence:
+                return ThirteenCommentaryStrings.CommentaryPairSequence;
             case ThirteenRules.HandType.Straight:
                 return ThirteenCommentaryStrings.CommentaryStraight;
             default:
@@ -736,7 +808,7 @@ public class ThirteenGameController : MonoBehaviour
         }
     }
 
-    private void ReportPlay(int seat, IReadOnlyList<Card.CardData> playedCards)
+    private void ReportPlay(int seat, IReadOnlyList<Card.CardData> playedCards, ThirteenRules.AnalyzedHand previousHand)
     {
         if (gameOver)
             return;
@@ -758,8 +830,10 @@ public class ThirteenGameController : MonoBehaviour
             cards: cardsText));
 
         // If this play chops a single 2, use the chop-specific pool; otherwise fall back to the type-specific pool.
-        bool choppedTwo = hand.IsValid && hand.IsChop
-            && (hand.Type == ThirteenRules.HandType.FourOfAKind || hand.Type == ThirteenRules.HandType.PairSequence);
+        bool choppedTwo = hand.IsValid
+            && (hand.Type == ThirteenRules.HandType.FourOfAKind || hand.Type == ThirteenRules.HandType.PairSequence)
+            && previousHand.Type == ThirteenRules.HandType.Single
+            && previousHand.PrimaryRankStrength == ThirteenRules.GetRankStrength(2);
         string[] pool = choppedTwo ? ThirteenCommentaryStrings.CommentaryChopTwo : CommentaryPoolForHand(hand);
 
         if (pool == null || pool.Length == 0)
@@ -831,9 +905,9 @@ public class ThirteenGameController : MonoBehaviour
         ReportPass(localPlayerSeat);
     }
 
-    private void CompletePlay(int seat, List<Card.CardData> playedCards, IReadOnlyList<Card> draggedCards = null)
+    private void CompletePlay(int seat, List<Card.CardData> playedCards, IReadOnlyList<Card> draggedCards = null, ThirteenRules.AnalyzedHand previousHand = default)
     {
-        ReportPlay(seat, playedCards);
+        ReportPlay(seat, playedCards, previousHand);
         RemoveCardsFromSeatHand(seat, playedCards);
 
         if (seat == localPlayerSeat)
@@ -960,6 +1034,7 @@ public class ThirteenGameController : MonoBehaviour
 
         int currentSeat = matchState.CurrentTurnSeat;
         bool isLocalTurn = currentSeat == localPlayerSeat;
+
         bool canPass = allowOutOfTurnTesting
             ? !matchState.TrickIsOpen
             : isLocalTurn && !matchState.TrickIsOpen && matchState.LeadingSeat != localPlayerSeat;
@@ -1002,14 +1077,18 @@ public class ThirteenGameController : MonoBehaviour
         float delay = Random.Range(botDelayMin, botDelayMax);
         yield return new WaitForSeconds(delay);
 
+        if (Time.unscaledTime < shakeBlockUntilTime)
+            yield return new WaitForSecondsRealtime(shakeBlockUntilTime - Time.unscaledTime);
+
         botTurnCoroutine = null;
 
         if (gameOver || matchState == null || matchState.CurrentTurnSeat != seat)
             yield break;
 
-        List<Card.CardData> botPlay = FindLowestBotPlay(seatHands[seat], matchState.CurrentHand);
+        List<Card.CardData> botPlay = FindBestBotPlay(seatHands[seat], matchState.CurrentHand);
         if (botPlay != null && botPlay.Count > 0)
         {
+            ThirteenRules.AnalyzedHand previousHand = matchState.CurrentHand;
             ThirteenMatchState.PlayResult result = matchState.TryPlay(seat, botPlay);
             if (!result.Success)
             {
@@ -1022,7 +1101,7 @@ public class ThirteenGameController : MonoBehaviour
             if (isMultiplayer && isHost)
                 PublishMove(seat, $"{seat}|play:{SerializeCards(botPlay)}");
 
-            CompletePlay(seat, botPlay);
+            CompletePlay(seat, botPlay, null, previousHand);
             yield break;
         }
 
@@ -1045,10 +1124,15 @@ public class ThirteenGameController : MonoBehaviour
         ReportPass(seat);
     }
 
-    private List<Card.CardData> FindLowestBotPlay(List<Card.CardData> hand, ThirteenRules.AnalyzedHand currentHand)
+    private List<Card.CardData> FindBestBotPlay(List<Card.CardData> hand, ThirteenRules.AnalyzedHand currentHand)
     {
         if (hand == null || hand.Count == 0)
             return null;
+
+        bool openingTrickRequiresThreeOfSpades = !currentHand.IsValid && FindThreeOfSpades(hand).HasValue;
+
+        List<Card.CardData> bestCandidate = null;
+        ThirteenRules.AnalyzedHand bestAnalyzed = default;
 
         foreach (List<Card.CardData> candidate in GetOrderedCandidates(hand, currentHand))
         {
@@ -1056,11 +1140,69 @@ public class ThirteenGameController : MonoBehaviour
             if (!analyzed.IsValid)
                 continue;
 
-            if (ThirteenRules.CanPlayOn(analyzed, currentHand, out _))
-                return candidate;
+            if (openingTrickRequiresThreeOfSpades && !ContainsThreeOfSpades(candidate))
+                continue;
+
+            if (!ThirteenRules.CanPlayOn(analyzed, currentHand, out _))
+                continue;
+
+            if (bestCandidate == null || IsBetterBotPlay(candidate, analyzed, bestCandidate, bestAnalyzed))
+            {
+                bestCandidate = candidate;
+                bestAnalyzed = analyzed;
+            }
+        }
+
+        return bestCandidate;
+    }
+
+    private static Card.CardData? FindThreeOfSpades(IEnumerable<Card.CardData> hand)
+    {
+        foreach (Card.CardData card in hand)
+        {
+            if (card.rank == 3 && card.suit == Card.Suit.Spades)
+                return card;
         }
 
         return null;
+    }
+
+    private static bool ContainsThreeOfSpades(IEnumerable<Card.CardData> cards)
+    {
+        foreach (Card.CardData card in cards)
+        {
+            if (card.rank == 3 && card.suit == Card.Suit.Spades)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsBetterBotPlay(
+        List<Card.CardData> candidate,
+        ThirteenRules.AnalyzedHand candidateAnalyzed,
+        List<Card.CardData> currentBest,
+        ThirteenRules.AnalyzedHand currentBestAnalyzed)
+    {
+        if (currentBest == null)
+            return true;
+
+        if (candidate.Count != currentBest.Count)
+            return candidate.Count > currentBest.Count;
+
+        if (candidateAnalyzed.Type != currentBestAnalyzed.Type)
+            return candidateAnalyzed.Type > currentBestAnalyzed.Type;
+
+        if (candidateAnalyzed.SequenceLength != currentBestAnalyzed.SequenceLength)
+            return candidateAnalyzed.SequenceLength > currentBestAnalyzed.SequenceLength;
+
+        if (candidateAnalyzed.PrimaryRankStrength != currentBestAnalyzed.PrimaryRankStrength)
+            return candidateAnalyzed.PrimaryRankStrength > currentBestAnalyzed.PrimaryRankStrength;
+
+        if (candidateAnalyzed.HighestSuitStrength != currentBestAnalyzed.HighestSuitStrength)
+            return candidateAnalyzed.HighestSuitStrength > currentBestAnalyzed.HighestSuitStrength;
+
+        return false;
     }
 
     private IEnumerable<List<Card.CardData>> GetOrderedCandidates(List<Card.CardData> hand, ThirteenRules.AnalyzedHand currentHand)
@@ -1384,6 +1526,7 @@ public class ThirteenGameController : MonoBehaviour
             return;
 
         List<Card.CardData> sorted = ThirteenRules.SortCards(cards);
+        ThirteenRules.AnalyzedHand previousHand = matchState.CurrentHand;
         ThirteenMatchState.PlayResult result = matchState.TryPlay(seat, sorted);
         if (!result.Success)
         {
@@ -1391,7 +1534,7 @@ public class ThirteenGameController : MonoBehaviour
             return;
         }
 
-        CompletePlay(seat, sorted);
+        CompletePlay(seat, sorted, null, previousHand);
     }
 
     private void ProcessRemoteActionsAsHost()
@@ -1451,6 +1594,7 @@ public class ThirteenGameController : MonoBehaviour
                     continue;
 
                 List<Card.CardData> sorted = ThirteenRules.SortCards(cards);
+                ThirteenRules.AnalyzedHand previousHand = matchState.CurrentHand;
                 ThirteenMatchState.PlayResult result = matchState.TryPlay(seat, sorted);
                 if (!result.Success)
                 {
@@ -1459,7 +1603,7 @@ public class ThirteenGameController : MonoBehaviour
                 }
 
                 PublishMove(seat, $"{seat}|play:{SerializeCards(sorted)}");
-                CompletePlay(seat, sorted);
+                CompletePlay(seat, sorted, null, previousHand);
             }
         }
     }
@@ -1628,16 +1772,89 @@ public class ThirteenGameController : MonoBehaviour
         if (passButton != null)
             passButton.interactable = false;
 
+        EnsureRematchFadeOverlay();
+        yield return FadeRematchOverlay(1f);
+
         if (deckDealer == null)
         {
+            yield return FadeRematchOverlay(0f);
             rematchInProgress = false;
+            rematchCoroutine = null;
             yield break;
         }
 
-        deckDealer.ShuffleAndDeal(seed);
-        yield return new WaitUntil(() => !deckDealer.IsDealing);
+        deckDealer.PrepareHands(seed);
+        yield return null;
+        yield return FadeRematchOverlay(0f);
 
+        deckDealer.PlayPreparedDealAnimation();
+        yield return new WaitUntil(() => !deckDealer.IsDealing);
         FinishInitialization();
         rematchCoroutine = null;
+    }
+
+    private void EnsureRematchFadeOverlay()
+    {
+        if (rematchFadeGroup != null && rematchFadeImage != null)
+            return;
+
+        Canvas rootCanvas = GetComponentInParent<Canvas>();
+        if (rootCanvas == null)
+            rootCanvas = FindFirstObjectByType<Canvas>();
+
+        if (rootCanvas == null)
+            return;
+
+        Transform existing = rootCanvas.transform.Find("RematchFadeOverlay");
+        GameObject overlayObject;
+        if (existing != null)
+        {
+            overlayObject = existing.gameObject;
+        }
+        else
+        {
+            overlayObject = new GameObject("RematchFadeOverlay", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(CanvasGroup));
+            overlayObject.transform.SetParent(rootCanvas.transform, false);
+            RectTransform rect = overlayObject.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+        }
+
+        overlayObject.transform.SetAsLastSibling();
+
+        rematchFadeImage = overlayObject.GetComponent<Image>();
+        rematchFadeGroup = overlayObject.GetComponent<CanvasGroup>();
+
+        if (rematchFadeImage != null)
+        {
+            rematchFadeImage.color = rematchFadeColor;
+            rematchFadeImage.raycastTarget = false;
+        }
+
+        if (rematchFadeGroup != null)
+        {
+            rematchFadeGroup.alpha = 0f;
+            rematchFadeGroup.blocksRaycasts = false;
+            rematchFadeGroup.interactable = false;
+        }
+    }
+
+    private IEnumerator FadeRematchOverlay(float targetAlpha)
+    {
+        EnsureRematchFadeOverlay();
+        if (rematchFadeGroup == null)
+            yield break;
+
+        rematchFadeGroup.transform.SetAsLastSibling();
+
+        if (rematchFadeImage != null)
+            rematchFadeImage.color = rematchFadeColor;
+        rematchFadeGroup.blocksRaycasts = targetAlpha > 0f;
+        Tween fadeTween = rematchFadeGroup.DOFade(targetAlpha, rematchFadeDuration).SetEase(Ease.InOutQuad).SetUpdate(true);
+        yield return fadeTween.WaitForCompletion();
+        rematchFadeGroup.transform.SetAsLastSibling();
+        rematchFadeGroup.blocksRaycasts = targetAlpha > 0f;
     }
 }
