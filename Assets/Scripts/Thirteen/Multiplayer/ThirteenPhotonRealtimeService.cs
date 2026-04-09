@@ -352,6 +352,7 @@ public class ThirteenPhotonRealtimeService : IThirteenMultiplayerService,
             IsHostView = IsHost,
             MaxPlayers = maxPlayers,
             Players = players,
+            IsInitialized = true,
             CanStartMatch = IsHost && players.Count(p => !p.IsBot) >= 1 && allHumansReady
         };
 
@@ -384,6 +385,7 @@ public class ThirteenPhotonRealtimeService : IThirteenMultiplayerService,
             RoomCode = roomCode,
             IsHostView = isHostView,
             MaxPlayers = 4,
+            IsInitialized = false,
             CanStartMatch = false
         };
 

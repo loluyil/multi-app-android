@@ -37,6 +37,7 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
             RoomCode = GenerateRoomCode(),
             IsHostView = true,
             MaxPlayers = 4,
+            IsInitialized = true,
             Players = new List<ThirteenLobbyPlayer>
             {
                 CreatePlayer(localPlayerId, displayName, isLocal: true, isHost: true, isReady: true, isConnected: true),
@@ -62,6 +63,7 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
             RoomCode = normalizedRoomCode,
             IsHostView = false,
             MaxPlayers = 4,
+            IsInitialized = true,
             Players = new List<ThirteenLobbyPlayer>
             {
                 CreatePlayer("host-seat", "Host Player", isLocal: false, isHost: true, isReady: true, isConnected: true),
@@ -191,6 +193,7 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
             RoomCode = currentLobby.RoomCode,
             IsHostView = currentLobby.IsHostView,
             MaxPlayers = currentLobby.MaxPlayers,
+            IsInitialized = currentLobby.IsInitialized,
             CanStartMatch = currentLobby.CanStartMatch,
             Players = currentLobby.Players
                 .Select(player => new ThirteenLobbyPlayer
