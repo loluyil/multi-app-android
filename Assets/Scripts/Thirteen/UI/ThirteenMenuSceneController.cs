@@ -7,6 +7,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
 {
     [SerializeField] private ThirteenMenuViewRefs view;
     [SerializeField] private float buttonSpamCooldown = 0.25f;
+    [SerializeField] private float minimumLoadingDuration = 1.25f;
 
     private IThirteenMultiplayerService multiplayerService;
     private int lastLobbyRevision = -1;
@@ -14,6 +15,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
     private float nextAllowedButtonTime;
     private bool awaitingLobbyOperation;
     private bool loadingVisible;
+    private float loadingStartedAt = -1f;
 
     private void Awake()
     {
@@ -327,11 +329,15 @@ public class ThirteenMenuSceneController : MonoBehaviour
 
         string displayName = GetDisplayName();
         ThirteenSessionRuntime.Instance.ConfigureHost(displayName);
-        awaitingLobbyOperation = true;
+        BeginLobbyOperation();
+        SetPanelState(mainActive: false, multiplayerActive: false, lobbyActive: true);
+        SetLobbyLoadingVisible(true);
+        UpdateStatus("Creating lobby...");
         ThirteenLobbyState lobby = multiplayerService.HostLobby(displayName);
         if (lobby != null)
             ThirteenSessionRuntime.Instance.SetRoomCode(lobby.RoomCode);
-        ShowLobbyPanel(lobby, "Creating lobby...");
+        RefreshLobby(lobby);
+        RefreshLobbyLoadingVisuals();
     }
 
     private void HandleJoinLobby()
@@ -342,11 +348,21 @@ public class ThirteenMenuSceneController : MonoBehaviour
         string displayName = GetDisplayName();
         string roomCode = view.roomCodeInput != null ? view.roomCodeInput.text : string.Empty;
         ThirteenSessionRuntime.Instance.ConfigureJoin(displayName, roomCode);
-        awaitingLobbyOperation = true;
+        BeginLobbyOperation();
+        SetPanelState(mainActive: false, multiplayerActive: false, lobbyActive: true);
+        SetLobbyLoadingVisible(true);
+        UpdateStatus("Joining lobby...");
         ThirteenLobbyState lobby = multiplayerService.JoinLobby(displayName, roomCode);
         if (lobby != null)
             ThirteenSessionRuntime.Instance.SetRoomCode(lobby.RoomCode);
-        ShowLobbyPanel(lobby, "Joining lobby...");
+        RefreshLobby(lobby);
+        RefreshLobbyLoadingVisuals();
+    }
+
+    private void BeginLobbyOperation()
+    {
+        awaitingLobbyOperation = true;
+        loadingStartedAt = Time.unscaledTime;
     }
 
     private void HandleToggleReady()
@@ -363,8 +379,15 @@ public class ThirteenMenuSceneController : MonoBehaviour
         if (!TryConsumeButtonPress() || IsBusyTransition())
             return;
 
+        ThirteenLobbyState currentLobby = multiplayerService.CurrentLobby;
+        if (currentLobby == null || !currentLobby.IsInitialized)
+        {
+            UpdateStatus("Waiting for lobby to initialize...");
+            return;
+        }
+
         ThirteenLobbyState lobby = multiplayerService.StartMatch();
-        if (lobby == null || !lobby.CanStartMatch)
+        if (lobby == null || !lobby.IsInitialized || !lobby.CanStartMatch)
         {
             UpdateStatus("The host needs at least two ready players to start.");
             RefreshLobby(lobby);
@@ -382,6 +405,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
             return;
 
         awaitingLobbyOperation = false;
+        loadingStartedAt = -1f;
         multiplayerService.LeaveLobby();
         ThirteenSessionRuntime.Instance.ConfigureSolo();
         lastLobbyRevision = multiplayerService.LobbyRevision;
@@ -393,6 +417,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
     private void ShowMainPanel()
     {
         awaitingLobbyOperation = false;
+        loadingStartedAt = -1f;
         SetPanelState(mainActive: true, multiplayerActive: false, lobbyActive: false);
         SetLobbyLoadingVisible(false);
         SetButtonLabel(view.readyButton, "Ready");
@@ -434,10 +459,10 @@ public class ThirteenMenuSceneController : MonoBehaviour
             view.lobbyPlayersText.text = BuildLobbyPlayerList(lobby);
 
         if (view.startMatchButton != null)
-            view.startMatchButton.interactable = lobby.IsHostView && lobby.CanStartMatch;
+            view.startMatchButton.interactable = lobby.IsHostView && lobby.IsInitialized && lobby.CanStartMatch;
 
         if (view.readyButton != null)
-            view.readyButton.interactable = !lobby.IsHostView;
+            view.readyButton.interactable = !lobby.IsHostView && lobby.IsInitialized;
 
         if (view.readyButton != null)
         {
@@ -543,38 +568,42 @@ public class ThirteenMenuSceneController : MonoBehaviour
         if (multiplayerService.IsBusy)
             return;
 
+        ThirteenLobbyState lobby = multiplayerService.CurrentLobby;
+        if (lobby == null || !lobby.IsInitialized)
+            return;
+
+        if (loadingStartedAt >= 0f && Time.unscaledTime - loadingStartedAt < minimumLoadingDuration)
+            return;
+
         awaitingLobbyOperation = false;
+        loadingStartedAt = -1f;
     }
 
     private void RefreshLobbyLoadingVisuals()
     {
-        bool showLoading = view != null
-            && view.lobbyPanel != null
-            && view.lobbyPanel.activeSelf
-            && awaitingLobbyOperation
-            && multiplayerService != null
-            && multiplayerService.IsBusy;
+        if (view == null || view.lobbyPanel == null || !view.lobbyPanel.activeSelf)
+        {
+            SetLobbyLoadingVisible(false);
+            return;
+        }
 
-        SetLobbyLoadingVisible(showLoading);
+        SetLobbyLoadingVisible(awaitingLobbyOperation);
     }
 
     private void SetLobbyLoadingVisible(bool visible)
     {
-        if (loadingVisible == visible)
-            return;
-
         loadingVisible = visible;
 
         if (view == null)
             return;
 
-        if (view.lobbyBackground != null)
+        if (view.lobbyBackground != null && view.lobbyBackground.activeSelf != !visible)
             view.lobbyBackground.SetActive(!visible);
 
-        if (view.lobbyStack != null)
+        if (view.lobbyStack != null && view.lobbyStack.activeSelf != !visible)
             view.lobbyStack.SetActive(!visible);
 
-        if (view.loadingCard != null)
+        if (view.loadingCard != null && view.loadingCard.activeSelf != visible)
             view.loadingCard.SetActive(visible);
     }
 
@@ -604,10 +633,10 @@ public class ThirteenMenuSceneController : MonoBehaviour
         SetButtonInteractable(view != null ? view.backToMainButton : null, !lockButtons);
         SetButtonInteractable(
             view != null ? view.readyButton : null,
-            !lockButtons && lobby != null && !lobby.IsHostView);
+            !lockButtons && lobby != null && lobby.IsInitialized && !lobby.IsHostView);
         SetButtonInteractable(
             view != null ? view.startMatchButton : null,
-            !lockButtons && lobby != null && lobby.IsHostView && lobby.CanStartMatch);
+            !lockButtons && lobby != null && lobby.IsInitialized && lobby.IsHostView && lobby.CanStartMatch);
 
         SetButtonInteractable(view != null ? view.leaveLobbyButton : null, !lockButtons && view != null && view.lobbyPanel != null && view.lobbyPanel.activeSelf);
     }

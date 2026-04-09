@@ -20,6 +20,7 @@ public class ThirteenLobbyState
     public string RoomCode;
     public bool IsHostView;
     public bool CanStartMatch;
+    public bool IsInitialized;
     public int MaxPlayers = 4;
     public List<ThirteenLobbyPlayer> Players = new List<ThirteenLobbyPlayer>();
 }
