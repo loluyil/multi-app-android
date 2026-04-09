@@ -4,6 +4,7 @@ public interface IThirteenMultiplayerService
 {
     ThirteenLobbyState CurrentLobby { get; }
     bool IsConnected { get; }
+    bool IsBusy { get; }
     int LobbyRevision { get; }
     string LastStatus { get; }
     int StatusRevision { get; }

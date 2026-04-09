@@ -1,16 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// All user-facing strings for the Thirteen game's turn-phase, played-card, and commentary UI.
-/// Tokens you can use inside strings:
-///   {player}    -> "you" or "player N"
-///   {Player}    -> "You" or "Player N"
-///   {cards}     -> human-readable description of the played cards (e.g. "a pair of 7s")
-///   {rank}      -> rank name of the primary card (e.g. "7", "J", "A", "2")
-///   {count}     -> number of cards in the hand / length of the run
-/// Edit freely — keep tokens intact.
-/// </summary>
 public static class ThirteenCommentaryStrings
 {
     public static readonly string[] CommentaryStraight =
@@ -23,7 +13,7 @@ public static class ThirteenCommentaryStrings
 
     public static readonly string[] CommentaryFourOfAKind =
     {
-        "chops dick off",
+        "no chop? XD"
     };
 
     public static readonly string[] CommentaryChopTwo =
@@ -42,6 +32,29 @@ public static class ThirteenCommentaryStrings
         "PLEASE DONT BEAT THIS",
     };
 
+    public static readonly string[] CommentaryPairSequence =
+    {
+        "bro saved the chop for what"
+    };
+
+    public static readonly string[] CommentaryTriple =
+    {
+        "triple dropped",
+        "three of a kind on the table",
+        "clean little triple"
+    };
+
+    public static readonly string[] CommentaryTripleTwo =
+    {
+        "okay i know they cheated",
+        "okay dont let him shuffle again"
+    };
+
+    public static readonly string[] CommentaryFourTwos =
+    {
+        "what..."
+    };
+
     public static readonly string[] CommentaryWin =
     {
         "run it back now",
@@ -49,10 +62,7 @@ public static class ThirteenCommentaryStrings
         "+2$",
     };
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
+    //helper functions
     public static string PlayerLabel(int seat, int localSeat, bool capitalized = false)
     {
         if (seat == localSeat)

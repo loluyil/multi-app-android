@@ -9,6 +9,10 @@ public class ThirteenMenuViewRefs : MonoBehaviour
     public GameObject mainPanel;
     public GameObject multiplayerPanel;
     public GameObject lobbyPanel;
+    public GameObject lobbyBackground;
+    public GameObject lobbyStack;
+    public GameObject loadingCard;
+    public GameObject loadingCardBack;
 
     [Header("Primary Buttons")]
     public Button playSoloButton;

@@ -1371,12 +1371,12 @@ MonoBehaviour:
   shakeStrengthMultiplier: 2
   shakeSingleAceTwoBase: 0.24
   shakePairAceTwoBase: 0.5
-  shakeBeatGrowth: 1.51
+  shakeBeatGrowth: 2.5
   shakeTripleBase: 0.25
   shakeFourOfAKindBase: 3
   shakeChopBase: 5
   shakeRunBase: 3
-  shakeBeatMultiplier: 10.28
+  shakeBeatMultiplier: 15
 --- !u!1 &1483447658
 GameObject:
   m_ObjectHideFlags: 0

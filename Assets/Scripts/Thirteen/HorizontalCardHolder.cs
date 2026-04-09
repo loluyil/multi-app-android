@@ -303,13 +303,6 @@ public class HorizontalCardHolder : MonoBehaviour
                 if (child == null)
                     continue;
 
-                Card childCard = child.GetComponent<Card>();
-                if (childCard != null && !childCard.enabled)
-                {
-                    child.gameObject.SetActive(false);
-                    continue;
-                }
-
                 Destroy(child.gameObject);
             }
 
@@ -358,7 +351,7 @@ public class HorizontalCardHolder : MonoBehaviour
         for (int i = 0; i < sortedCards.Count && i < targetSlots.Count; i++)
         {
             Card.CardData data = sortedCards[i];
-            GameObject cardObject = GetOrCreateDisplayCard(targetSlots[i]);
+            GameObject cardObject = Instantiate(cardPrefab, targetSlots[i]);
             cardObject.name = $"Played_{data.SpriteKey}";
             cardObject.SetActive(true);
 
@@ -895,52 +888,6 @@ public class HorizontalCardHolder : MonoBehaviour
 
         LayoutRebuilder.ForceRebuildLayoutImmediate(playArea);
         return activeSlots;
-    }
-
-    private GameObject GetOrCreateDisplayCard(RectTransform targetSlot)
-    {
-        if (targetSlot == null || cardPrefab == null)
-            return null;
-
-        for (int i = 0; i < targetSlot.childCount; i++)
-        {
-            Transform child = targetSlot.GetChild(i);
-            if (child == null)
-                continue;
-
-            Card existingCard = child.GetComponent<Card>();
-            if (existingCard != null && !existingCard.enabled)
-                return child.gameObject;
-        }
-
-        GameObject cardObject = Instantiate(cardPrefab, targetSlot);
-        Card card = cardObject.GetComponent<Card>();
-        if (card != null)
-        {
-            card.KillTweens();
-            card.SetSelected(false, false);
-            card.SetReturning(false);
-            card.SnapToLocal(Vector2.zero);
-            card.SnapScale(Vector3.one);
-            card.SetInteractionEnabled(false);
-            card.enabled = false;
-        }
-
-        Button button = cardObject.GetComponent<Button>();
-        if (button != null)
-        {
-            button.enabled = true;
-            button.interactable = false;
-        }
-
-        Image rootImage = cardObject.GetComponent<Image>();
-        if (rootImage != null)
-        {
-            rootImage.enabled = true;
-            rootImage.color = Color.white;
-        }
-
-        return cardObject;
     }
 
     private int GetCenteredStartIndex(int cardCount)

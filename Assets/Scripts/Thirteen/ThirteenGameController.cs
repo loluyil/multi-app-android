@@ -50,6 +50,10 @@ public class ThirteenGameController : MonoBehaviour
     [SerializeField] private Ease botTweenEase = Ease.OutCubic;
     [SerializeField] private float botCardSpacing = 42f;
 
+    [Header("Rematch Fade")]
+    [SerializeField] private float rematchFadeDuration = 0.25f;
+    [SerializeField] private Color rematchFadeColor = new Color(0f, 0f, 0f, 1f);
+
     [Header("Screen Shake")]
     [Tooltip("Transform that gets shaken on dramatic plays. If null, the root canvas transform is used.")]
     [SerializeField] private Transform shakeTarget;
@@ -115,6 +119,12 @@ public class ThirteenGameController : MonoBehaviour
     private Coroutine rematchCoroutine;
     private int rematchSequence;
     private bool rematchInProgress;
+    private bool deferTurnStateRefresh;
+    private float nextRematchAllowedTime;
+    private const float RematchSpamCooldown = 0.35f;
+    private CanvasGroup rematchFadeGroup;
+    private Image rematchFadeImage;
+    private Canvas rematchFadeCanvas;
 
     private void Awake()
     {
@@ -282,6 +292,7 @@ public class ThirteenGameController : MonoBehaviour
         AttachButtonPop(rematchButton);
         AttachButtonPop(confirmLeaveYesButton);
         AttachButtonPop(confirmLeaveNoButton);
+        EnsureRematchFadeOverlay();
     }
 
     private void WireLeaveUi()
@@ -348,19 +359,33 @@ public class ThirteenGameController : MonoBehaviour
     private void HideRematchButton()
     {
         if (rematchButton != null)
+        {
+            rematchButton.interactable = false;
             rematchButton.gameObject.SetActive(false);
+        }
     }
 
     private void ShowRematchButton()
     {
         if (rematchButton != null)
+        {
+            rematchButton.interactable = !rematchInProgress;
             rematchButton.gameObject.SetActive(true);
+        }
     }
 
     private void OnRematchButtonClicked()
     {
+        if (Time.unscaledTime < nextRematchAllowedTime)
+            return;
+
+        nextRematchAllowedTime = Time.unscaledTime + RematchSpamCooldown;
+
         if (rematchInProgress)
             return;
+
+        if (rematchButton != null)
+            rematchButton.interactable = false;
 
         if (!isMultiplayer || mpService == null)
         {
@@ -435,6 +460,7 @@ public class ThirteenGameController : MonoBehaviour
             return false;
         }
 
+        ThirteenRules.AnalyzedHand previousHand = matchState.CurrentHand;
         ThirteenMatchState.PlayResult result = matchState.TryPlay(localPlayerSeat, sortedCards);
         if (!result.Success)
         {
@@ -459,7 +485,7 @@ public class ThirteenGameController : MonoBehaviour
             }
         }
 
-        CompletePlay(localPlayerSeat, sortedCards, draggedCards);
+        CompletePlay(localPlayerSeat, sortedCards, draggedCards, previousHand);
         return true;
     }
 
@@ -520,7 +546,8 @@ public class ThirteenGameController : MonoBehaviour
         trickPlayCount = 0;
 
         RefreshOpponentVisuals();
-        UpdateTurnState();
+        if (!deferTurnStateRefresh)
+            UpdateTurnState();
     }
 
     private int FindSeatWithThreeOfSpades()
@@ -692,8 +719,8 @@ public class ThirteenGameController : MonoBehaviour
         float elapsed = 0f;
         while (elapsed < duration)
         {
-            float remaining = 1f - (elapsed / duration);
-            float m = magnitude * remaining;
+            float normalized = elapsed / duration;
+            float m = magnitude * (1f - (normalized * normalized));
             target.localPosition = shakeOrigin + new Vector3(
                 Random.Range(-m, m),
                 Random.Range(-m, m),
@@ -727,8 +754,16 @@ public class ThirteenGameController : MonoBehaviour
                 if (hand.PrimaryRankStrength == ThirteenRules.GetRankStrength(2))
                     return ThirteenCommentaryStrings.CommentaryPlayedTwo;
                 return null;
+            case ThirteenRules.HandType.Triple:
+                return hand.PrimaryRankStrength == ThirteenRules.GetRankStrength(2)
+                    ? ThirteenCommentaryStrings.CommentaryTripleTwo
+                    : ThirteenCommentaryStrings.CommentaryTriple;
             case ThirteenRules.HandType.FourOfAKind:
-                return ThirteenCommentaryStrings.CommentaryFourOfAKind;
+                return hand.PrimaryRankStrength == ThirteenRules.GetRankStrength(2)
+                    ? ThirteenCommentaryStrings.CommentaryFourTwos
+                    : ThirteenCommentaryStrings.CommentaryFourOfAKind;
+            case ThirteenRules.HandType.PairSequence:
+                return ThirteenCommentaryStrings.CommentaryPairSequence;
             case ThirteenRules.HandType.Straight:
                 return ThirteenCommentaryStrings.CommentaryStraight;
             default:
@@ -736,7 +771,7 @@ public class ThirteenGameController : MonoBehaviour
         }
     }
 
-    private void ReportPlay(int seat, IReadOnlyList<Card.CardData> playedCards)
+    private void ReportPlay(int seat, IReadOnlyList<Card.CardData> playedCards, ThirteenRules.AnalyzedHand previousHand)
     {
         if (gameOver)
             return;
@@ -758,8 +793,10 @@ public class ThirteenGameController : MonoBehaviour
             cards: cardsText));
 
         // If this play chops a single 2, use the chop-specific pool; otherwise fall back to the type-specific pool.
-        bool choppedTwo = hand.IsValid && hand.IsChop
-            && (hand.Type == ThirteenRules.HandType.FourOfAKind || hand.Type == ThirteenRules.HandType.PairSequence);
+        bool choppedTwo = hand.IsValid
+            && (hand.Type == ThirteenRules.HandType.FourOfAKind || hand.Type == ThirteenRules.HandType.PairSequence)
+            && previousHand.Type == ThirteenRules.HandType.Single
+            && previousHand.PrimaryRankStrength == ThirteenRules.GetRankStrength(2);
         string[] pool = choppedTwo ? ThirteenCommentaryStrings.CommentaryChopTwo : CommentaryPoolForHand(hand);
 
         if (pool == null || pool.Length == 0)
@@ -831,9 +868,9 @@ public class ThirteenGameController : MonoBehaviour
         ReportPass(localPlayerSeat);
     }
 
-    private void CompletePlay(int seat, List<Card.CardData> playedCards, IReadOnlyList<Card> draggedCards = null)
+    private void CompletePlay(int seat, List<Card.CardData> playedCards, IReadOnlyList<Card> draggedCards = null, ThirteenRules.AnalyzedHand previousHand = default)
     {
-        ReportPlay(seat, playedCards);
+        ReportPlay(seat, playedCards, previousHand);
         RemoveCardsFromSeatHand(seat, playedCards);
 
         if (seat == localPlayerSeat)
@@ -960,6 +997,17 @@ public class ThirteenGameController : MonoBehaviour
 
         int currentSeat = matchState.CurrentTurnSeat;
         bool isLocalTurn = currentSeat == localPlayerSeat;
+
+        if (deferTurnStateRefresh)
+        {
+            if (passButton != null)
+                passButton.interactable = false;
+
+            localHandHolder.SetHandInteractionEnabled(false);
+            localHandHolder.SetTurnActive(false);
+            return;
+        }
+
         bool canPass = allowOutOfTurnTesting
             ? !matchState.TrickIsOpen
             : isLocalTurn && !matchState.TrickIsOpen && matchState.LeadingSeat != localPlayerSeat;
@@ -1007,9 +1055,10 @@ public class ThirteenGameController : MonoBehaviour
         if (gameOver || matchState == null || matchState.CurrentTurnSeat != seat)
             yield break;
 
-        List<Card.CardData> botPlay = FindLowestBotPlay(seatHands[seat], matchState.CurrentHand);
+        List<Card.CardData> botPlay = FindBestBotPlay(seatHands[seat], matchState.CurrentHand);
         if (botPlay != null && botPlay.Count > 0)
         {
+            ThirteenRules.AnalyzedHand previousHand = matchState.CurrentHand;
             ThirteenMatchState.PlayResult result = matchState.TryPlay(seat, botPlay);
             if (!result.Success)
             {
@@ -1022,7 +1071,7 @@ public class ThirteenGameController : MonoBehaviour
             if (isMultiplayer && isHost)
                 PublishMove(seat, $"{seat}|play:{SerializeCards(botPlay)}");
 
-            CompletePlay(seat, botPlay);
+            CompletePlay(seat, botPlay, null, previousHand);
             yield break;
         }
 
@@ -1045,10 +1094,20 @@ public class ThirteenGameController : MonoBehaviour
         ReportPass(seat);
     }
 
-    private List<Card.CardData> FindLowestBotPlay(List<Card.CardData> hand, ThirteenRules.AnalyzedHand currentHand)
+    private List<Card.CardData> FindBestBotPlay(List<Card.CardData> hand, ThirteenRules.AnalyzedHand currentHand)
     {
         if (hand == null || hand.Count == 0)
             return null;
+
+        if (!currentHand.IsValid)
+        {
+            Card.CardData? openingCard = FindThreeOfSpades(hand);
+            if (openingCard.HasValue)
+                return new List<Card.CardData> { openingCard.Value };
+        }
+
+        List<Card.CardData> bestCandidate = null;
+        ThirteenRules.AnalyzedHand bestAnalyzed = default;
 
         foreach (List<Card.CardData> candidate in GetOrderedCandidates(hand, currentHand))
         {
@@ -1056,11 +1115,55 @@ public class ThirteenGameController : MonoBehaviour
             if (!analyzed.IsValid)
                 continue;
 
-            if (ThirteenRules.CanPlayOn(analyzed, currentHand, out _))
-                return candidate;
+            if (!ThirteenRules.CanPlayOn(analyzed, currentHand, out _))
+                continue;
+
+            if (bestCandidate == null || IsBetterBotPlay(candidate, analyzed, bestCandidate, bestAnalyzed))
+            {
+                bestCandidate = candidate;
+                bestAnalyzed = analyzed;
+            }
+        }
+
+        return bestCandidate;
+    }
+
+    private static Card.CardData? FindThreeOfSpades(IEnumerable<Card.CardData> hand)
+    {
+        foreach (Card.CardData card in hand)
+        {
+            if (card.rank == 3 && card.suit == Card.Suit.Spades)
+                return card;
         }
 
         return null;
+    }
+
+    private static bool IsBetterBotPlay(
+        List<Card.CardData> candidate,
+        ThirteenRules.AnalyzedHand candidateAnalyzed,
+        List<Card.CardData> currentBest,
+        ThirteenRules.AnalyzedHand currentBestAnalyzed)
+    {
+        if (currentBest == null)
+            return true;
+
+        if (candidate.Count != currentBest.Count)
+            return candidate.Count > currentBest.Count;
+
+        if (candidateAnalyzed.Type != currentBestAnalyzed.Type)
+            return candidateAnalyzed.Type > currentBestAnalyzed.Type;
+
+        if (candidateAnalyzed.SequenceLength != currentBestAnalyzed.SequenceLength)
+            return candidateAnalyzed.SequenceLength > currentBestAnalyzed.SequenceLength;
+
+        if (candidateAnalyzed.PrimaryRankStrength != currentBestAnalyzed.PrimaryRankStrength)
+            return candidateAnalyzed.PrimaryRankStrength > currentBestAnalyzed.PrimaryRankStrength;
+
+        if (candidateAnalyzed.HighestSuitStrength != currentBestAnalyzed.HighestSuitStrength)
+            return candidateAnalyzed.HighestSuitStrength > currentBestAnalyzed.HighestSuitStrength;
+
+        return false;
     }
 
     private IEnumerable<List<Card.CardData>> GetOrderedCandidates(List<Card.CardData> hand, ThirteenRules.AnalyzedHand currentHand)
@@ -1384,6 +1487,7 @@ public class ThirteenGameController : MonoBehaviour
             return;
 
         List<Card.CardData> sorted = ThirteenRules.SortCards(cards);
+        ThirteenRules.AnalyzedHand previousHand = matchState.CurrentHand;
         ThirteenMatchState.PlayResult result = matchState.TryPlay(seat, sorted);
         if (!result.Success)
         {
@@ -1391,7 +1495,7 @@ public class ThirteenGameController : MonoBehaviour
             return;
         }
 
-        CompletePlay(seat, sorted);
+        CompletePlay(seat, sorted, null, previousHand);
     }
 
     private void ProcessRemoteActionsAsHost()
@@ -1451,6 +1555,7 @@ public class ThirteenGameController : MonoBehaviour
                     continue;
 
                 List<Card.CardData> sorted = ThirteenRules.SortCards(cards);
+                ThirteenRules.AnalyzedHand previousHand = matchState.CurrentHand;
                 ThirteenMatchState.PlayResult result = matchState.TryPlay(seat, sorted);
                 if (!result.Success)
                 {
@@ -1459,7 +1564,7 @@ public class ThirteenGameController : MonoBehaviour
                 }
 
                 PublishMove(seat, $"{seat}|play:{SerializeCards(sorted)}");
-                CompletePlay(seat, sorted);
+                CompletePlay(seat, sorted, null, previousHand);
             }
         }
     }
@@ -1575,6 +1680,7 @@ public class ThirteenGameController : MonoBehaviour
     private IEnumerator BeginRematchRoutine(int? seed, int? startSeatOverride, string seatsCsv)
     {
         rematchInProgress = true;
+        deferTurnStateRefresh = true;
         gameOver = false;
         pendingSelfBroadcasts = 0;
         appliedMoveLogCount = 0;
@@ -1628,9 +1734,15 @@ public class ThirteenGameController : MonoBehaviour
         if (passButton != null)
             passButton.interactable = false;
 
+        EnsureRematchFadeOverlay();
+        yield return FadeRematchOverlay(1f);
+
         if (deckDealer == null)
         {
+            yield return FadeRematchOverlay(0f);
+            deferTurnStateRefresh = false;
             rematchInProgress = false;
+            rematchCoroutine = null;
             yield break;
         }
 
@@ -1638,6 +1750,83 @@ public class ThirteenGameController : MonoBehaviour
         yield return new WaitUntil(() => !deckDealer.IsDealing);
 
         FinishInitialization();
+        yield return null;
+        yield return FadeRematchOverlay(0f);
+        deferTurnStateRefresh = false;
+        localHandHolder.SetHandInteractionEnabled(true);
+        UpdateTurnState();
         rematchCoroutine = null;
+    }
+
+    private void EnsureRematchFadeOverlay()
+    {
+        if (rematchFadeGroup != null && rematchFadeImage != null)
+            return;
+
+        Canvas rootCanvas = GetComponentInParent<Canvas>();
+        if (rootCanvas == null)
+            rootCanvas = FindFirstObjectByType<Canvas>();
+
+        if (rootCanvas == null)
+            return;
+
+        Transform existing = rootCanvas.transform.Find("RematchFadeOverlay");
+        GameObject overlayObject;
+        if (existing != null)
+        {
+            overlayObject = existing.gameObject;
+        }
+        else
+        {
+            overlayObject = new GameObject("RematchFadeOverlay", typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster), typeof(CanvasRenderer), typeof(Image), typeof(CanvasGroup));
+            overlayObject.transform.SetParent(rootCanvas.transform, false);
+            RectTransform rect = overlayObject.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+        }
+
+        overlayObject.transform.SetAsLastSibling();
+
+        rematchFadeCanvas = overlayObject.GetComponent<Canvas>();
+        rematchFadeImage = overlayObject.GetComponent<Image>();
+        rematchFadeGroup = overlayObject.GetComponent<CanvasGroup>();
+
+        if (rematchFadeCanvas != null)
+        {
+            rematchFadeCanvas.overrideSorting = true;
+            rematchFadeCanvas.sortingOrder = 32767;
+        }
+
+        if (rematchFadeImage != null)
+        {
+            rematchFadeImage.color = rematchFadeColor;
+            rematchFadeImage.raycastTarget = true;
+        }
+
+        if (rematchFadeGroup != null)
+        {
+            rematchFadeGroup.alpha = 0f;
+            rematchFadeGroup.blocksRaycasts = false;
+            rematchFadeGroup.interactable = false;
+        }
+    }
+
+    private IEnumerator FadeRematchOverlay(float targetAlpha)
+    {
+        EnsureRematchFadeOverlay();
+        if (rematchFadeGroup == null)
+            yield break;
+
+        rematchFadeGroup.transform.SetAsLastSibling();
+
+        if (rematchFadeImage != null)
+            rematchFadeImage.color = rematchFadeColor;
+        rematchFadeGroup.blocksRaycasts = targetAlpha > 0f;
+        Tween fadeTween = rematchFadeGroup.DOFade(targetAlpha, rematchFadeDuration).SetEase(Ease.InOutQuad).SetUpdate(true);
+        yield return fadeTween.WaitForCompletion();
+        rematchFadeGroup.transform.SetAsLastSibling();
+        rematchFadeGroup.blocksRaycasts = targetAlpha > 0f;
     }
 }

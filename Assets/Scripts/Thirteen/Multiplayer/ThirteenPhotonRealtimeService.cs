@@ -46,6 +46,7 @@ public class ThirteenPhotonRealtimeService : IThirteenMultiplayerService,
 
     public ThirteenLobbyState CurrentLobby => currentLobby;
     public bool IsConnected => client.IsConnected;
+    public bool IsBusy => busy || pendingOperation != PendingOperation.None;
     public int LobbyRevision => lobbyRevision;
     public string LastStatus => lastStatus;
     public int StatusRevision => statusRevision;
