@@ -207,19 +207,13 @@ public static class ThirteenRules
             return true;
         }
 
-        if (challenger.Type == HandType.Single)
+        if (challenger.HighestSuitStrength > current.HighestSuitStrength)
         {
-            if (challenger.HighestSuitStrength > current.HighestSuitStrength)
-            {
-                reason = "Single wins on suit.";
-                return true;
-            }
-
-            reason = "Single does not beat current suit.";
-            return false;
+            reason = $"{challenger.Type} wins on suit.";
+            return true;
         }
 
-        reason = $"{challenger.Type} matches current value and does not beat it.";
+        reason = $"{challenger.Type} matches current value and does not beat current suit.";
         return false;
     }
 

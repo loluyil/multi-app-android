@@ -51,6 +51,7 @@ public class ThirteenDeckDealer : MonoBehaviour
     private readonly Dictionary<RectTransform, int> opponentVisibleCounts = new Dictionary<RectTransform, int>();
     private readonly Queue<GameObject> tweenCardPool = new Queue<GameObject>();
     private Coroutine dealCoroutine;
+    private bool animateLocalDealPreview = true;
 
     public IReadOnlyDictionary<string, Sprite> SpriteLookup => spriteLookup;
     public bool HasDealtHands => playerHand.Count == 13 && opponentHandA.Count == 13 && opponentHandB.Count == 13 && opponentHandC.Count == 13;
@@ -99,6 +100,12 @@ public class ThirteenDeckDealer : MonoBehaviour
 
     public void ShuffleAndDeal(int? seed)
     {
+        PrepareHands(seed);
+        PlayPreparedDealAnimation();
+    }
+
+    public void PrepareHands(int? seed)
+    {
         RebuildSpriteLookup();
 
         List<Card.CardData> deck = CreateDeck();
@@ -111,9 +118,26 @@ public class ThirteenDeckDealer : MonoBehaviour
         opponentHandA = SortHand(deck.Skip(13).Take(13).ToList());
         opponentHandB = SortHand(deck.Skip(26).Take(13).ToList());
         opponentHandC = SortHand(deck.Skip(39).Take(13).ToList());
+    }
+
+    public void PlayPreparedDealAnimation(bool animateLocalPreview = true)
+    {
+        if (!HasDealtHands)
+            return;
+
+        animateLocalDealPreview = animateLocalPreview;
 
         if (dealCoroutine != null)
             StopCoroutine(dealCoroutine);
+
+        List<Card.CardData> deck = new List<Card.CardData>(CardsPerSeat * 4);
+        for (int i = 0; i < CardsPerSeat; i++)
+        {
+            deck.Add(playerHand[i]);
+            deck.Add(opponentHandA[i]);
+            deck.Add(opponentHandB[i]);
+            deck.Add(opponentHandC[i]);
+        }
 
         dealCoroutine = StartCoroutine(DealAnimationCoroutine(deck));
     }
@@ -136,7 +160,7 @@ public class ThirteenDeckDealer : MonoBehaviour
         ClearOpponentContainer(player3Container, false);
         ClearOpponentContainer(player4Container, true);
 
-        if (playerHandHolder != null)
+        if (playerHandHolder != null && animateLocalDealPreview)
             playerHandHolder.PrepareDealPreview(playerHand.Count);
 
         RectTransform deckRect = GetComponent<RectTransform>();
@@ -200,7 +224,7 @@ public class ThirteenDeckDealer : MonoBehaviour
                     {
                         ReleaseTweenCard(dealCard);
 
-                        if (playerHandHolder != null && capturedPlayerIndex < playerHand.Count)
+                        if (animateLocalDealPreview && playerHandHolder != null && capturedPlayerIndex < playerHand.Count)
                             playerHandHolder.AnimateDealPreviewCard(playerHand[capturedPlayerIndex], spriteLookup, deckRect.position, capturedPlayerIndex);
                     });
             }

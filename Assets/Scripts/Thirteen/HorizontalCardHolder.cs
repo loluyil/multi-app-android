@@ -108,7 +108,8 @@ public class HorizontalCardHolder : MonoBehaviour
         if (hand == null || spriteLookup == null)
             return;
 
-        InitializeHand(forceRebuild: cards.Count != slotCount);
+        ResetDragState();
+        EnsureHandStructure();
         CacheSlotsAndCards();
 
         List<Card.CardData> sortedHand = ThirteenRules.SortCards(hand);
@@ -143,7 +144,8 @@ public class HorizontalCardHolder : MonoBehaviour
 
     public void PrepareDealPreview(int cardCount)
     {
-        InitializeHand(forceRebuild: cards.Count != slotCount);
+        ResetDragState();
+        EnsureHandStructure();
         CacheSlotsAndCards();
         ClearDealPreview();
 
@@ -236,7 +238,11 @@ public class HorizontalCardHolder : MonoBehaviour
         {
             GameObject previewCard = dealPreviewCards[i];
             if (previewCard != null)
+            {
+                previewCard.transform.SetParent(null, false);
+                previewCard.SetActive(false);
                 Destroy(previewCard);
+            }
         }
 
         dealPreviewCards.Clear();
@@ -396,6 +402,13 @@ public class HorizontalCardHolder : MonoBehaviour
     {
         if (draggedCard == null || previewIndex < 0 || slots.Count == 0)
             return;
+
+        if (draggedCard.RectTransform == null)
+        {
+            ResetDragState();
+            ArrangeCards(false);
+            return;
+        }
 
         draggedCard.UpdateShadow(shadowOffset);
         UpdateGroupedCardPositions();
@@ -574,6 +587,8 @@ public class HorizontalCardHolder : MonoBehaviour
         if (initialized && !forceRebuild)
             return;
 
+        ResetDragState();
+
         for (int i = transform.childCount - 1; i >= 0; i--)
             Destroy(transform.GetChild(i).gameObject);
 
@@ -600,6 +615,79 @@ public class HorizontalCardHolder : MonoBehaviour
         CacheSlotsAndCards();
     }
 
+    private void EnsureHandStructure()
+    {
+        if (!initialized)
+        {
+            InitializeHand(forceRebuild: false);
+            return;
+        }
+
+        while (transform.childCount < slotCount)
+        {
+            GameObject slot = Instantiate(slotPrefab, transform);
+            slot.name = $"Slot_{transform.childCount - 1}";
+
+            GameObject cardObject = Instantiate(cardPrefab, slot.transform);
+            cardObject.name = $"Card_{transform.childCount - 1}";
+
+            RectTransform rect = cardObject.GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.anchoredPosition = Vector2.zero;
+                rect.localScale = Vector3.one;
+            }
+        }
+
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            Transform slotTransform = transform.GetChild(i);
+            if (slotTransform == null)
+                continue;
+
+            slotTransform.name = $"Slot_{i}";
+
+            Card directCard = null;
+            for (int childIndex = 0; childIndex < slotTransform.childCount; childIndex++)
+            {
+                Transform child = slotTransform.GetChild(childIndex);
+                if (child == null)
+                    continue;
+
+                Card candidate = child.GetComponent<Card>();
+                if (candidate == null)
+                    continue;
+
+                if (candidate.gameObject.name.StartsWith("DealPreview_"))
+                    continue;
+
+                directCard = candidate;
+                break;
+            }
+
+            if (directCard != null)
+            {
+                directCard.gameObject.name = $"Card_{i}";
+                RectTransform rect = directCard.GetComponent<RectTransform>();
+                if (rect != null)
+                {
+                    rect.anchoredPosition = Vector2.zero;
+                    rect.localScale = Vector3.one;
+                }
+                continue;
+            }
+
+            GameObject cardObject = Instantiate(cardPrefab, slotTransform);
+            cardObject.name = $"Card_{i}";
+            RectTransform cardRect = cardObject.GetComponent<RectTransform>();
+            if (cardRect != null)
+            {
+                cardRect.anchoredPosition = Vector2.zero;
+                cardRect.localScale = Vector3.one;
+            }
+        }
+    }
+
     private void CacheSlotsAndCards()
     {
         Canvas.ForceUpdateCanvases();
@@ -615,7 +703,24 @@ public class HorizontalCardHolder : MonoBehaviour
 
             slots.Add(slot);
 
-            Card card = slot.GetComponentInChildren<Card>(true);
+            Card card = null;
+            for (int childIndex = 0; childIndex < slot.childCount; childIndex++)
+            {
+                Transform child = slot.GetChild(childIndex);
+                if (child == null)
+                    continue;
+
+                Card candidate = child.GetComponent<Card>();
+                if (candidate == null)
+                    continue;
+
+                if (candidate.gameObject.name.StartsWith("DealPreview_"))
+                    continue;
+
+                card = candidate;
+                break;
+            }
+
             if (card == null)
                 continue;
 
@@ -782,17 +887,21 @@ public class HorizontalCardHolder : MonoBehaviour
         if (slots.Count == 0)
             return -1;
 
-        if (slots.Count == 1)
+        List<RectTransform> liveSlots = slots.Where(slot => slot != null).ToList();
+        if (liveSlots.Count == 0)
+            return -1;
+
+        if (liveSlots.Count == 1)
             return 0;
 
-        for (int i = 0; i < slots.Count - 1; i++)
+        for (int i = 0; i < liveSlots.Count - 1; i++)
         {
-            float midpoint = (slots[i].position.x + slots[i + 1].position.x) * 0.5f;
+            float midpoint = (liveSlots[i].position.x + liveSlots[i + 1].position.x) * 0.5f;
             if (draggedX < midpoint)
                 return i;
         }
 
-        return slots.Count - 1;
+        return liveSlots.Count - 1;
     }
 
     private int GetGroupStartIndex(int leadIndex)
@@ -896,5 +1005,26 @@ public class HorizontalCardHolder : MonoBehaviour
             Mathf.RoundToInt((slots.Count - cardCount) * 0.5f),
             0,
             Mathf.Max(0, slots.Count - cardCount));
+    }
+
+    private void ResetDragState()
+    {
+        KillGatherTweens();
+
+        foreach (Card dragCard in activeDragGroup)
+        {
+            if (dragCard == null)
+                continue;
+
+            dragCard.KillTweens();
+            dragCard.HideShadow();
+            dragCard.SetReturning(false);
+            dragCard.SnapScale(Vector3.one);
+        }
+
+        activeDragGroup.Clear();
+        draggedCard = null;
+        previewIndex = -1;
+        draggedCardGroupIndex = 0;
     }
 }
