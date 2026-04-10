@@ -3950,7 +3950,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1433126566
 RectTransform:
   m_ObjectHideFlags: 0
@@ -6934,7 +6934,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &2054414070
 RectTransform:
   m_ObjectHideFlags: 0
@@ -7322,7 +7322,7 @@ MonoBehaviour:
   lobbyPanel: {fileID: 31265403}
   lobbyBackground: {fileID: 1746410736}
   lobbyStack: {fileID: 72960169}
-  settingsPanel: {fileID: 885221121}
+  settingsPanel: {fileID: 0}
   loadingCard: {fileID: 313321473}
   loadingCardBack: {fileID: 884915167}
   playSoloButton: {fileID: 1980614889}
@@ -7333,10 +7333,9 @@ MonoBehaviour:
   readyButton: {fileID: 1749824531}
   startMatchButton: {fileID: 902680587}
   leaveLobbyButton: {fileID: 1496072414}
-  settingsButton: {fileID: 2054414072}
-  settingsBackButton: {fileID: 1717023583}
-  exitGameButton: {fileID: 173653964}
-  vsyncButton: {fileID: 299728562}
+  settingsButton: {fileID: 0}
+  settingsBackButton: {fileID: 0}
+  exitGameButton: {fileID: 0}
   displayNameInput: {fileID: 1797197111}
   roomCodeInput: {fileID: 2017794626}
   titleText: {fileID: 0}

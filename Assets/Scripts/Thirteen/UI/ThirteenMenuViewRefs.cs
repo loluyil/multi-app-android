@@ -27,7 +27,6 @@ public class ThirteenMenuViewRefs : MonoBehaviour
     public Button settingsButton;
     public Button settingsBackButton;
     public Button exitGameButton;
-    public Button vsyncButton;
 
     [Header("Inputs")]
     public TMP_InputField displayNameInput;

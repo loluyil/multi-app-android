@@ -236,7 +236,6 @@ public class ThirteenMenuSceneController : MonoBehaviour
         AttachButtonPop(view.leaveLobbyButton);
         AttachButtonPop(view.settingsButton);
         AttachButtonPop(view.settingsBackButton);
-        AttachButtonPop(view.vsyncButton);
         AttachButtonPop(view.exitGameButton);
     }
 
@@ -259,9 +258,6 @@ public class ThirteenMenuSceneController : MonoBehaviour
         {
             if (view.settingsBackButton == null)
                 view.settingsBackButton = FindButtonUnder(view.settingsPanel.transform, "BackButton", "CloseButton");
-
-            if (view.vsyncButton == null)
-                view.vsyncButton = FindOrCreateButtonUnder(view.settingsPanel.transform, "VsyncCheckbox", "VSyncCheckbox", "VsyncButton", "VSyncButton");
 
             if (view.exitGameButton == null)
                 view.exitGameButton = FindButtonUnder(view.settingsPanel.transform, "ExitGameButton", "ExitButton", "QuitButton", "QuitGameButton");
@@ -340,7 +336,6 @@ public class ThirteenMenuSceneController : MonoBehaviour
         AddButtonListener(view.leaveLobbyButton, HandleLeaveLobby);
         AddButtonListener(view.settingsButton, HandleSettingsButton);
         AddButtonListener(view.settingsBackButton, HandleCloseSettings);
-        AddButtonListener(view.vsyncButton, HandleToggleVsync);
         AddButtonListener(view.exitGameButton, HandleExitGame);
     }
 
@@ -359,7 +354,6 @@ public class ThirteenMenuSceneController : MonoBehaviour
         RemoveButtonListener(view.leaveLobbyButton, HandleLeaveLobby);
         RemoveButtonListener(view.settingsButton, HandleSettingsButton);
         RemoveButtonListener(view.settingsBackButton, HandleCloseSettings);
-        RemoveButtonListener(view.vsyncButton, HandleToggleVsync);
         RemoveButtonListener(view.exitGameButton, HandleExitGame);
     }
 
@@ -493,14 +487,6 @@ public class ThirteenMenuSceneController : MonoBehaviour
     {
         if (view?.settingsPanel != null)
             view.settingsPanel.SetActive(false);
-    }
-
-    private void HandleToggleVsync()
-    {
-        bool nextEnabled = !IsVsyncEnabled();
-        SetVsyncEnabled(nextEnabled);
-        UpdateVsyncVisual();
-        UpdateStatus(nextEnabled ? "VSync enabled." : "VSync disabled.");
     }
 
     private void HandleExitGame()
@@ -801,46 +787,6 @@ public class ThirteenMenuSceneController : MonoBehaviour
 
     private void ApplySavedSettings()
     {
-        SetVsyncEnabled(IsVsyncEnabled());
-        UpdateVsyncVisual();
-    }
-
-    private bool IsVsyncEnabled()
-    {
-        return PlayerPrefs.GetInt(VsyncPrefKey, 0) == 1;
-    }
-
-    private void SetVsyncEnabled(bool enabled)
-    {
-        PlayerPrefs.SetInt(VsyncPrefKey, enabled ? 1 : 0);
-        PlayerPrefs.Save();
-
-        if (enabled)
-        {
-            QualitySettings.vSyncCount = 1;
-            Application.targetFrameRate = -1;
-        }
-        else
-        {
-            QualitySettings.vSyncCount = 0;
-            int refreshRate = Screen.currentResolution.refreshRate;
-            Application.targetFrameRate = Mathf.Max(60, refreshRate);
-        }
-    }
-
-    private void UpdateVsyncVisual()
-    {
-        if (view?.vsyncButton == null)
-            return;
-
-        bool enabled = IsVsyncEnabled();
-        Graphic graphic = view.vsyncButton.targetGraphic;
-        if (graphic != null)
-            graphic.color = enabled ? new Color(0.95f, 0.78f, 0.32f, 1f) : new Color(0.45f, 0.24f, 0.31f, 1f);
-
-        TMP_Text label = view.vsyncButton.GetComponentInChildren<TMP_Text>(true);
-        if (label != null)
-            label.text = enabled ? "On" : "Off";
     }
 
     private void UpdateButtonInteractivity(bool forceLocked = false)
