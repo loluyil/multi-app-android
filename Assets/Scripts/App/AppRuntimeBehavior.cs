@@ -2,18 +2,29 @@ using UnityEngine;
 
 public static class AppRuntimeBehavior
 {
+    private const string ThirteenVsyncPrefKey = "thirteen.settings.vsync";
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Initialize()
     {
         Application.runInBackground = true;
+
+        bool vsyncEnabled = PlayerPrefs.GetInt(ThirteenVsyncPrefKey, 0) == 1;
+        if (vsyncEnabled)
+        {
+            QualitySettings.vSyncCount = 1;
+            Application.targetFrameRate = -1;
+            return;
+        }
+
         QualitySettings.vSyncCount = 0;
-        Application.targetFrameRate = GetMobileTargetFrameRate();
+        Application.targetFrameRate = GetTargetFrameRate();
     }
 
-    private static int GetMobileTargetFrameRate()
+    private static int GetTargetFrameRate()
     {
         if (!Application.isMobilePlatform)
-            return 60;
+            return Mathf.Max(60, Screen.currentResolution.refreshRate);
 
         int refreshRate = Screen.currentResolution.refreshRate;
         if (refreshRate >= 110)
