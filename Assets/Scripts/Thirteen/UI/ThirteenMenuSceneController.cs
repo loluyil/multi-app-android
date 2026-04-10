@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,10 +7,12 @@ using UnityEngine.UI;
 public class ThirteenMenuSceneController : MonoBehaviour
 {
     private const string VsyncPrefKey = "thirteen.settings.vsync";
+    private static readonly Regex RoomCodePattern = new Regex("^[A-Z2-9]{6}$", RegexOptions.Compiled);
 
     [SerializeField] private ThirteenMenuViewRefs view;
     [SerializeField] private float buttonSpamCooldown = 0.25f;
     [SerializeField] private float minimumLoadingDuration = 1.25f;
+    [SerializeField] private float lobbyOperationTimeout = 8f;
 
     private IThirteenMultiplayerService multiplayerService;
     private int lastLobbyRevision = -1;
@@ -48,7 +51,10 @@ public class ThirteenMenuSceneController : MonoBehaviour
         {
             lastStatusRevision = multiplayerService.StatusRevision;
             if (!string.IsNullOrWhiteSpace(multiplayerService.LastStatus))
+            {
                 UpdateStatus(multiplayerService.LastStatus);
+                HandleLobbyOperationFailureStatus(multiplayerService.LastStatus);
+            }
         }
 
         UpdatePendingLobbyOperationState();
@@ -104,6 +110,8 @@ public class ThirteenMenuSceneController : MonoBehaviour
 
         if (view.roomCodeInput != null && string.IsNullOrWhiteSpace(view.roomCodeInput.text))
             view.roomCodeInput.text = session.RoomCode;
+
+        ResetRoomCodeValidationVisual();
     }
 
     private void EnsureStatusTextIsConfigured()
@@ -394,6 +402,16 @@ public class ThirteenMenuSceneController : MonoBehaviour
 
         string displayName = GetDisplayName();
         string roomCode = view.roomCodeInput != null ? view.roomCodeInput.text : string.Empty;
+        roomCode = string.IsNullOrWhiteSpace(roomCode) ? string.Empty : roomCode.Trim().ToUpperInvariant();
+
+        if (!IsValidRoomCode(roomCode))
+        {
+            ShowInvalidRoomCodeVisual();
+            UpdateStatus("Invalid room code.");
+            return;
+        }
+
+        ResetRoomCodeValidationVisual();
         ThirteenSessionRuntime.Instance.ConfigureJoin(displayName, roomCode);
         BeginLobbyOperation();
         SetPanelState(mainActive: false, multiplayerActive: false, lobbyActive: true);
@@ -595,6 +613,49 @@ public class ThirteenMenuSceneController : MonoBehaviour
             : view.displayNameInput.text.Trim();
     }
 
+    private static bool IsValidRoomCode(string roomCode)
+    {
+        return !string.IsNullOrWhiteSpace(roomCode) && RoomCodePattern.IsMatch(roomCode);
+    }
+
+    private void ShowInvalidRoomCodeVisual()
+    {
+        ShowRoomCodePlaceholderFeedback("invalid", new Color(1f, 0.35f, 0.35f, 0.9f));
+    }
+
+    private void ShowConnectionFailedRoomCodeVisual()
+    {
+        ShowRoomCodePlaceholderFeedback("connection failed", new Color(1f, 0.35f, 0.35f, 0.9f));
+    }
+
+    private void ShowRoomCodePlaceholderFeedback(string text, Color color)
+    {
+        TMP_InputField input = view != null ? view.roomCodeInput : null;
+        if (input == null)
+            return;
+
+        input.SetTextWithoutNotify(string.Empty);
+
+        if (input.placeholder is TMP_Text placeholder)
+        {
+            placeholder.text = text;
+            placeholder.color = color;
+        }
+    }
+
+    private void ResetRoomCodeValidationVisual()
+    {
+        TMP_InputField input = view != null ? view.roomCodeInput : null;
+        if (input == null)
+            return;
+
+        if (input.placeholder is TMP_Text placeholder)
+        {
+            placeholder.text = "enter room code";
+            placeholder.color = new Color(0f, 0f, 0f, 0.7529412f);
+        }
+    }
+
     private void UpdateStatus(string message)
     {
         if (view != null && view.statusText != null)
@@ -645,6 +706,12 @@ public class ThirteenMenuSceneController : MonoBehaviour
         if (!awaitingLobbyOperation || multiplayerService == null)
             return;
 
+        if (loadingStartedAt >= 0f && Time.unscaledTime - loadingStartedAt >= lobbyOperationTimeout)
+        {
+            FailLobbyOperation("Connection failed.");
+            return;
+        }
+
         if (multiplayerService.IsBusy)
             return;
 
@@ -657,6 +724,38 @@ public class ThirteenMenuSceneController : MonoBehaviour
 
         awaitingLobbyOperation = false;
         loadingStartedAt = -1f;
+    }
+
+    private void HandleLobbyOperationFailureStatus(string status)
+    {
+        if (!awaitingLobbyOperation || string.IsNullOrWhiteSpace(status))
+            return;
+
+        string normalized = status.Trim();
+        if (normalized.StartsWith("Join failed:", System.StringComparison.OrdinalIgnoreCase)
+            || normalized.StartsWith("Create failed:", System.StringComparison.OrdinalIgnoreCase)
+            || normalized.StartsWith("Disconnected:", System.StringComparison.OrdinalIgnoreCase)
+            || normalized.StartsWith("Auth failed:", System.StringComparison.OrdinalIgnoreCase))
+        {
+            FailLobbyOperation(normalized);
+        }
+    }
+
+    private void FailLobbyOperation(string statusMessage)
+    {
+        awaitingLobbyOperation = false;
+        loadingStartedAt = -1f;
+        SetLobbyLoadingVisible(false);
+        ShowConnectionFailedRoomCodeVisual();
+
+        if (multiplayerService != null)
+            multiplayerService.LeaveLobby();
+
+        lastLobbyRevision = multiplayerService != null ? multiplayerService.LobbyRevision : -1;
+        lastStatusRevision = multiplayerService != null ? multiplayerService.StatusRevision : -1;
+        SetPanelState(mainActive: false, multiplayerActive: true, lobbyActive: false);
+        UpdateButtonInteractivity();
+        UpdateStatus(string.Empty);
     }
 
     private void RefreshLobbyLoadingVisuals()
