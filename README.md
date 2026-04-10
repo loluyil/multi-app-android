@@ -3,6 +3,8 @@
 
 A simple 2D Unity app built for friends. No ads, no unnecessary clutter—just Sudoku and Tien Len in one place.
 
+Hold the bottom of the screen for 1s and it will lead you back to the menu
+
 ---
 
 ## Sudoku
