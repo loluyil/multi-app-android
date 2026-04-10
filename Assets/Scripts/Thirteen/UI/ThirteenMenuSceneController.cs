@@ -30,10 +30,12 @@ public class ThirteenMenuSceneController : MonoBehaviour
         EnsureLobbyCodeInputIsConfigured();
         EnsureReturnHoldIsConfigured();
         EnsureLoadingViewIsConfigured();
+        EnsureSettingsViewIsConfigured();
         EnsureMenuEffectsAreConfigured();
         multiplayerService = ThirteenMultiplayerServiceRegistry.GetService();
         ConfigureDefaultInputValues();
         WireButtons();
+        ApplySavedSettings();
         ShowMainPanel();
     }
 
@@ -92,6 +94,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
         EnsureStatusTextIsConfigured();
         EnsureLobbyCodeInputIsConfigured();
         EnsureLoadingViewIsConfigured();
+        EnsureSettingsViewIsConfigured();
         EnsureMenuEffectsAreConfigured();
     }
 
@@ -231,6 +234,40 @@ public class ThirteenMenuSceneController : MonoBehaviour
         AttachButtonPop(view.readyButton);
         AttachButtonPop(view.startMatchButton);
         AttachButtonPop(view.leaveLobbyButton);
+        AttachButtonPop(view.settingsButton);
+        AttachButtonPop(view.settingsBackButton);
+        AttachButtonPop(view.vsyncButton);
+        AttachButtonPop(view.exitGameButton);
+    }
+
+    private void EnsureSettingsViewIsConfigured()
+    {
+        if (view == null)
+            return;
+
+        if (view.settingsPanel == null)
+        {
+            Transform panel = FindSceneTransform("SettingsPanel");
+            if (panel != null)
+                view.settingsPanel = panel.gameObject;
+        }
+
+        if (view.settingsButton == null)
+            view.settingsButton = FindButtonAnywhere("SettingsButton");
+
+        if (view.settingsPanel != null)
+        {
+            if (view.settingsBackButton == null)
+                view.settingsBackButton = FindButtonUnder(view.settingsPanel.transform, "BackButton", "CloseButton");
+
+            if (view.vsyncButton == null)
+                view.vsyncButton = FindOrCreateButtonUnder(view.settingsPanel.transform, "VsyncCheckbox", "VSyncCheckbox", "VsyncButton", "VSyncButton");
+
+            if (view.exitGameButton == null)
+                view.exitGameButton = FindButtonUnder(view.settingsPanel.transform, "ExitGameButton", "ExitButton", "QuitButton", "QuitGameButton");
+
+            view.settingsPanel.SetActive(false);
+        }
     }
 
     private void EnsureLoadingViewIsConfigured()
@@ -301,6 +338,10 @@ public class ThirteenMenuSceneController : MonoBehaviour
         AddButtonListener(view.readyButton, HandleToggleReady);
         AddButtonListener(view.startMatchButton, HandleStartMatch);
         AddButtonListener(view.leaveLobbyButton, HandleLeaveLobby);
+        AddButtonListener(view.settingsButton, HandleSettingsButton);
+        AddButtonListener(view.settingsBackButton, HandleCloseSettings);
+        AddButtonListener(view.vsyncButton, HandleToggleVsync);
+        AddButtonListener(view.exitGameButton, HandleExitGame);
     }
 
     private void UnwireButtons()
@@ -316,6 +357,10 @@ public class ThirteenMenuSceneController : MonoBehaviour
         RemoveButtonListener(view.readyButton, HandleToggleReady);
         RemoveButtonListener(view.startMatchButton, HandleStartMatch);
         RemoveButtonListener(view.leaveLobbyButton, HandleLeaveLobby);
+        RemoveButtonListener(view.settingsButton, HandleSettingsButton);
+        RemoveButtonListener(view.settingsBackButton, HandleCloseSettings);
+        RemoveButtonListener(view.vsyncButton, HandleToggleVsync);
+        RemoveButtonListener(view.exitGameButton, HandleExitGame);
     }
 
     private void HandlePlaySolo()
@@ -433,12 +478,43 @@ public class ThirteenMenuSceneController : MonoBehaviour
         UpdateStatus("Left the lobby.");
     }
 
+    private void HandleSettingsButton()
+    {
+        if (!TryConsumeButtonPress() || view?.settingsPanel == null)
+            return;
+
+        bool nextActive = !view.settingsPanel.activeSelf;
+        view.settingsPanel.SetActive(nextActive);
+        if (nextActive)
+            view.settingsPanel.transform.SetAsLastSibling();
+    }
+
+    private void HandleCloseSettings()
+    {
+        if (view?.settingsPanel != null)
+            view.settingsPanel.SetActive(false);
+    }
+
+    private void HandleToggleVsync()
+    {
+        bool nextEnabled = !IsVsyncEnabled();
+        SetVsyncEnabled(nextEnabled);
+        UpdateVsyncVisual();
+        UpdateStatus(nextEnabled ? "VSync enabled." : "VSync disabled.");
+    }
+
+    private void HandleExitGame()
+    {
+        Application.Quit();
+    }
+
     private void ShowMainPanel()
     {
         awaitingLobbyOperation = false;
         loadingStartedAt = -1f;
         SetPanelState(mainActive: true, multiplayerActive: false, lobbyActive: false);
         SetLobbyLoadingVisible(false);
+        HandleCloseSettings();
         SetButtonLabel(view.readyButton, "Ready");
         SetButtonLabel(view.startMatchButton, "Start Match");
         UpdateStatus("Choose how you want to play Thirteen.");
@@ -448,12 +524,14 @@ public class ThirteenMenuSceneController : MonoBehaviour
     {
         SetPanelState(mainActive: false, multiplayerActive: true, lobbyActive: false);
         SetLobbyLoadingVisible(false);
+        HandleCloseSettings();
         UpdateStatus("Host or join a multiplayer session.");
     }
 
     private void ShowLobbyPanel(ThirteenLobbyState lobby, string statusMessage)
     {
         SetPanelState(mainActive: false, multiplayerActive: false, lobbyActive: true);
+        HandleCloseSettings();
         RefreshLobby(lobby);
         RefreshLobbyLoadingVisuals();
         UpdateStatus(statusMessage);
@@ -721,6 +799,50 @@ public class ThirteenMenuSceneController : MonoBehaviour
         return awaitingLobbyOperation || (multiplayerService != null && multiplayerService.IsBusy);
     }
 
+    private void ApplySavedSettings()
+    {
+        SetVsyncEnabled(IsVsyncEnabled());
+        UpdateVsyncVisual();
+    }
+
+    private bool IsVsyncEnabled()
+    {
+        return PlayerPrefs.GetInt(VsyncPrefKey, 0) == 1;
+    }
+
+    private void SetVsyncEnabled(bool enabled)
+    {
+        PlayerPrefs.SetInt(VsyncPrefKey, enabled ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (enabled)
+        {
+            QualitySettings.vSyncCount = 1;
+            Application.targetFrameRate = -1;
+        }
+        else
+        {
+            QualitySettings.vSyncCount = 0;
+            int refreshRate = Screen.currentResolution.refreshRate;
+            Application.targetFrameRate = Mathf.Max(60, refreshRate);
+        }
+    }
+
+    private void UpdateVsyncVisual()
+    {
+        if (view?.vsyncButton == null)
+            return;
+
+        bool enabled = IsVsyncEnabled();
+        Graphic graphic = view.vsyncButton.targetGraphic;
+        if (graphic != null)
+            graphic.color = enabled ? new Color(0.95f, 0.78f, 0.32f, 1f) : new Color(0.45f, 0.24f, 0.31f, 1f);
+
+        TMP_Text label = view.vsyncButton.GetComponentInChildren<TMP_Text>(true);
+        if (label != null)
+            label.text = enabled ? "On" : "Off";
+    }
+
     private void UpdateButtonInteractivity(bool forceLocked = false)
     {
         bool lockButtons = forceLocked || IsBusyTransition() || loadingVisible;
@@ -767,6 +889,72 @@ public class ThirteenMenuSceneController : MonoBehaviour
     {
         if (button != null)
             button.interactable = value;
+    }
+
+    private Button FindButtonAnywhere(string objectName)
+    {
+        return FindButtonUnder(transform.root, objectName);
+    }
+
+    private static Button FindButtonUnder(Transform root, params string[] names)
+    {
+        if (root == null || names == null)
+            return null;
+
+        Button[] buttons = root.GetComponentsInChildren<Button>(true);
+        for (int nameIndex = 0; nameIndex < names.Length; nameIndex++)
+        {
+            string name = names[nameIndex];
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                Button button = buttons[i];
+                if (button != null && button.name == name)
+                    return button;
+            }
+        }
+
+        return null;
+    }
+
+    private static Button FindOrCreateButtonUnder(Transform root, params string[] names)
+    {
+        if (root == null || names == null)
+            return null;
+
+        for (int nameIndex = 0; nameIndex < names.Length; nameIndex++)
+        {
+            Transform target = FindTransformUnder(root, names[nameIndex]);
+            if (target == null)
+                continue;
+
+            Button button = target.GetComponent<Button>();
+            if (button == null)
+                button = target.gameObject.AddComponent<Button>();
+
+            Graphic graphic = target.GetComponent<Graphic>();
+            if (graphic != null && button.targetGraphic == null)
+                button.targetGraphic = graphic;
+
+            return button;
+        }
+
+        return null;
+    }
+
+    private static Transform FindTransformUnder(Transform root, string objectName)
+    {
+        if (root == null || string.IsNullOrWhiteSpace(objectName))
+            return null;
+
+        Transform[] transforms = root.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < transforms.Length; i++)
+        {
+            Transform candidate = transforms[i];
+            if (candidate != null && candidate.name == objectName)
+                return candidate;
+        }
+
+        return null;
     }
 
     private static void EnsurePanelBackgroundDrag(GameObject panel)

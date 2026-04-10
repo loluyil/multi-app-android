@@ -11,6 +11,7 @@ public class ThirteenMenuViewRefs : MonoBehaviour
     public GameObject lobbyPanel;
     public GameObject lobbyBackground;
     public GameObject lobbyStack;
+    public GameObject settingsPanel;
     public GameObject loadingCard;
     public GameObject loadingCardBack;
 
@@ -23,6 +24,10 @@ public class ThirteenMenuViewRefs : MonoBehaviour
     public Button readyButton;
     public Button startMatchButton;
     public Button leaveLobbyButton;
+    public Button settingsButton;
+    public Button settingsBackButton;
+    public Button exitGameButton;
+    public Button vsyncButton;
 
     [Header("Inputs")]
     public TMP_InputField displayNameInput;
