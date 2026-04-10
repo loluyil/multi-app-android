@@ -6,7 +6,6 @@ using UnityEngine.UI;
 
 public class ThirteenMenuSceneController : MonoBehaviour
 {
-    private const string VsyncPrefKey = "thirteen.settings.vsync";
     private static readonly Regex RoomCodePattern = new Regex("^[A-Z2-9]{6}$", RegexOptions.Compiled);
 
     [SerializeField] private ThirteenMenuViewRefs view;
