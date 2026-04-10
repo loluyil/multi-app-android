@@ -9,7 +9,10 @@ public sealed class ThirteenPhotonConfigData
     public string fixedRegion;
     public int maxPlayers = 4;
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(appId) && !appId.Contains("PASTE_YOUR");
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(appId)
+        && !appId.Contains("PASTE_YOUR")
+        && !appId.StartsWith("${", StringComparison.Ordinal)
+        && !appId.StartsWith("$", StringComparison.Ordinal);
 }
 
 public static class ThirteenPhotonConfig
@@ -36,6 +39,7 @@ public static class ThirteenPhotonConfig
         try
         {
             cached = JsonUtility.FromJson<ThirteenPhotonConfigData>(configAsset.text) ?? new ThirteenPhotonConfigData();
+            cached.appId = ResolveEnvironmentVariable(cached.appId);
         }
         catch (Exception ex)
         {
@@ -44,5 +48,31 @@ public static class ThirteenPhotonConfig
         }
 
         return cached;
+    }
+
+    private static string ResolveEnvironmentVariable(string rawValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+            return rawValue;
+
+        string trimmed = rawValue.Trim();
+        string variableName = null;
+
+        if (trimmed.StartsWith("${", StringComparison.Ordinal) && trimmed.EndsWith("}", StringComparison.Ordinal) && trimmed.Length > 3)
+            variableName = trimmed.Substring(2, trimmed.Length - 3);
+        else if (trimmed.StartsWith("$", StringComparison.Ordinal) && trimmed.Length > 1)
+            variableName = trimmed.Substring(1);
+
+        if (string.IsNullOrWhiteSpace(variableName))
+            return trimmed;
+
+        string resolved = Environment.GetEnvironmentVariable(variableName);
+        if (string.IsNullOrWhiteSpace(resolved))
+        {
+            Debug.LogWarning($"[ThirteenPhoton] Environment variable '{variableName}' was not found.");
+            return trimmed;
+        }
+
+        return resolved.Trim();
     }
 }

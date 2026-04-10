@@ -5918,6 +5918,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   view: {fileID: 2117083928}
   buttonSpamCooldown: 0.25
+  minimumLoadingDuration: 1.25
+  lobbyOperationTimeout: 8
 --- !u!114 &2117083928
 MonoBehaviour:
   m_ObjectHideFlags: 0
