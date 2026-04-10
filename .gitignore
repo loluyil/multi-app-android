@@ -76,3 +76,4 @@ crashlytics-build.properties
 # Local Photon credentials
 /Assets/Resources/ThirteenPhotonConfig.json
 /Assets/Resources/ThirteenPhotonConfig.json.meta
+/.env
