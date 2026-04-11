@@ -69,6 +69,7 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
     private Button button;
     private Transform originalShadowParent;
     private int originalShadowSiblingIndex;
+    private Vector3 originalShadowLocalScale = Vector3.one;
     private float shadowScaleMultiplier = 1f;
     private bool isSelected;
     private bool isDragging;
@@ -77,6 +78,8 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
     private Vector3 lastWorldPosition;
     private bool hasLastWorldPosition;
     private Vector2 lastPointerScreenPosition;
+    private RectTransform dragParentRect;
+    private Vector2 dragPointerOffset;
     private CardData data;
 
     public RectTransform RectTransform => rect;
@@ -96,6 +99,7 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
         {
             originalShadowParent = shadowRect.parent;
             originalShadowSiblingIndex = shadowRect.GetSiblingIndex();
+            originalShadowLocalScale = shadowRect.localScale;
             shadowGraphic = shadowRect.GetComponent<Graphic>();
             if (shadowGraphic != null)
                 shadowGraphic.raycastTarget = false;
@@ -143,6 +147,17 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
         KillTweens();
         isDragging = true;
         lastPointerScreenPosition = eventData.position;
+        dragParentRect = rect.parent as RectTransform;
+        if (dragParentRect != null
+            && RectTransformUtility.ScreenPointToLocalPointInRectangle(dragParentRect, eventData.position, eventData.pressEventCamera, out Vector2 localPointerPosition))
+        {
+            dragPointerOffset = localPointerPosition - rect.anchoredPosition;
+        }
+        else
+        {
+            dragPointerOffset = Vector2.zero;
+        }
+
         if (group != null) group.blocksRaycasts = false;
         BeginDragEvent.Invoke(this);
     }
@@ -150,7 +165,16 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
     public void OnDrag(PointerEventData eventData)
     {
         lastPointerScreenPosition = eventData.position;
-        rect.anchoredPosition += eventData.delta / canvas.scaleFactor;
+        RectTransform currentParentRect = rect.parent as RectTransform;
+        if (currentParentRect != null
+            && RectTransformUtility.ScreenPointToLocalPointInRectangle(currentParentRect, eventData.position, eventData.pressEventCamera, out Vector2 localPointerPosition))
+        {
+            rect.anchoredPosition = localPointerPosition - dragPointerOffset;
+        }
+        else if (canvas != null)
+        {
+            rect.anchoredPosition += eventData.delta / canvas.scaleFactor;
+        }
     }
 
     public void OnEndDrag(PointerEventData eventData)
@@ -234,7 +258,12 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
 
         shadowRect.position = rect.position + (Vector3)offset;
         shadowRect.rotation = rect.rotation;
-        shadowRect.localScale = Vector3.Scale(rect.lossyScale, Vector3.one * shadowScaleMultiplier);
+        Vector3 desiredWorldScale = Vector3.Scale(rect.lossyScale, Vector3.Scale(originalShadowLocalScale, Vector3.one * shadowScaleMultiplier));
+        Vector3 parentWorldScale = shadowRect.parent != null ? shadowRect.parent.lossyScale : Vector3.one;
+        shadowRect.localScale = new Vector3(
+            SafeDivide(desiredWorldScale.x, parentWorldScale.x),
+            SafeDivide(desiredWorldScale.y, parentWorldScale.y),
+            SafeDivide(desiredWorldScale.z, parentWorldScale.z));
         shadowRect.sizeDelta = rect.rect.size;
     }
 
@@ -270,7 +299,7 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
         }
 
         shadowRect.anchoredPosition = Vector2.zero;
-        shadowRect.localScale = Vector3.one;
+        shadowRect.localScale = originalShadowLocalScale;
         SetShadowScaleMultiplier(1f);
         shadowRect.gameObject.SetActive(false);
     }
@@ -354,5 +383,10 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
     private Vector2 ApplySelectionOffset(Vector2 basePosition)
     {
         return basePosition + new Vector2(0f, isSelected ? selectedLift : 0f);
+    }
+
+    private static float SafeDivide(float numerator, float denominator)
+    {
+        return Mathf.Approximately(denominator, 0f) ? numerator : numerator / denominator;
     }
 }
