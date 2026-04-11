@@ -366,7 +366,6 @@ public class ThirteenMenuSceneController : MonoBehaviour
         ThirteenSessionRuntime.Instance.ConfigureSolo();
         awaitingLobbyOperation = false;
         loadingVisible = false;
-        UpdateStatus("Solo mode selected.");
         ThirteenSceneRouter.LoadGame();
     }
 
@@ -400,7 +399,6 @@ public class ThirteenMenuSceneController : MonoBehaviour
         if (!IsValidRoomCode(roomCode))
         {
             ShowInvalidRoomCodeVisual();
-            UpdateStatus("Invalid room code.");
             return;
         }
 
@@ -429,7 +427,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
             return;
 
         ThirteenLobbyState lobby = multiplayerService.ToggleReady();
-        ShowLobbyPanel(lobby, "Ready state updated.");
+        ShowLobbyPanel(lobby);
     }
 
     private void HandleStartMatch()
@@ -439,20 +437,15 @@ public class ThirteenMenuSceneController : MonoBehaviour
 
         ThirteenLobbyState currentLobby = multiplayerService.CurrentLobby;
         if (currentLobby == null || !currentLobby.IsInitialized)
-        {
-            UpdateStatus("Waiting for lobby to initialize...");
             return;
-        }
 
         ThirteenLobbyState lobby = multiplayerService.StartMatch();
         if (lobby == null || !lobby.IsInitialized || !lobby.CanStartMatch)
         {
-            UpdateStatus("The host needs at least two ready players to start.");
             RefreshLobby(lobby);
             return;
         }
 
-        UpdateStatus("Loading Thirteen.");
         UpdateButtonInteractivity(forceLocked: true);
         ThirteenSceneRouter.LoadGame();
     }
@@ -469,7 +462,6 @@ public class ThirteenMenuSceneController : MonoBehaviour
         lastLobbyRevision = multiplayerService.LobbyRevision;
         lastStatusRevision = multiplayerService.StatusRevision;
         ShowMainPanel();
-        UpdateStatus("Left the lobby.");
     }
 
     private void HandleSettingsButton()
@@ -503,7 +495,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
         HandleCloseSettings();
         SetButtonLabel(view.readyButton, "Ready");
         SetButtonLabel(view.startMatchButton, "Start Match");
-        UpdateStatus("Choose how you want to play Thirteen.");
+        UpdateStatus(string.Empty);
     }
 
     private void ShowMultiplayerPanel()
@@ -511,16 +503,15 @@ public class ThirteenMenuSceneController : MonoBehaviour
         SetPanelState(mainActive: false, multiplayerActive: true, lobbyActive: false);
         SetLobbyLoadingVisible(false);
         HandleCloseSettings();
-        UpdateStatus("Host or join a multiplayer session.");
+        UpdateStatus(string.Empty);
     }
 
-    private void ShowLobbyPanel(ThirteenLobbyState lobby, string statusMessage)
+    private void ShowLobbyPanel(ThirteenLobbyState lobby)
     {
         SetPanelState(mainActive: false, multiplayerActive: false, lobbyActive: true);
         HandleCloseSettings();
         RefreshLobby(lobby);
         RefreshLobbyLoadingVisuals();
-        UpdateStatus(statusMessage);
     }
 
     private void RefreshLobby(ThirteenLobbyState lobby)
@@ -740,7 +731,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
         lastStatusRevision = multiplayerService != null ? multiplayerService.StatusRevision : -1;
         SetPanelState(mainActive: false, multiplayerActive: true, lobbyActive: false);
         UpdateButtonInteractivity();
-        UpdateStatus(string.Empty);
+        UpdateStatus(statusMessage);
     }
 
     private void RefreshLobbyLoadingVisuals()
