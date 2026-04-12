@@ -77,6 +77,8 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
     private Vector3 lastWorldPosition;
     private bool hasLastWorldPosition;
     private Vector2 lastPointerScreenPosition;
+    private RectTransform activeDragParent;
+    private Vector2 dragPointerOffset;
     private CardData data;
 
     public RectTransform RectTransform => rect;
@@ -145,18 +147,21 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
         lastPointerScreenPosition = eventData.position;
         if (group != null) group.blocksRaycasts = false;
         BeginDragEvent.Invoke(this);
+        CacheDragPointerOffset(eventData);
     }
 
     public void OnDrag(PointerEventData eventData)
     {
         lastPointerScreenPosition = eventData.position;
-        rect.anchoredPosition += eventData.delta / canvas.scaleFactor;
+        UpdateDraggedPosition(eventData);
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
         lastPointerScreenPosition = eventData.position;
         isDragging = false;
+        activeDragParent = null;
+        dragPointerOffset = Vector2.zero;
         if (group != null) group.blocksRaycasts = true;
         EndDragEvent.Invoke(this);
     }
@@ -354,5 +359,57 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
     private Vector2 ApplySelectionOffset(Vector2 basePosition)
     {
         return basePosition + new Vector2(0f, isSelected ? selectedLift : 0f);
+    }
+
+    private void CacheDragPointerOffset(PointerEventData eventData)
+    {
+        activeDragParent = rect.parent as RectTransform;
+        if (activeDragParent == null)
+        {
+            dragPointerOffset = Vector2.zero;
+            return;
+        }
+
+        Camera eventCamera = GetEventCamera(eventData);
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(activeDragParent, eventData.position, eventCamera, out Vector2 localPointerPosition))
+        {
+            dragPointerOffset = localPointerPosition - rect.anchoredPosition;
+        }
+        else
+        {
+            dragPointerOffset = Vector2.zero;
+        }
+    }
+
+    private void UpdateDraggedPosition(PointerEventData eventData)
+    {
+        if (activeDragParent == null)
+            activeDragParent = rect.parent as RectTransform;
+
+        if (activeDragParent == null)
+        {
+            rect.anchoredPosition += eventData.delta / canvas.scaleFactor;
+            return;
+        }
+
+        Camera eventCamera = GetEventCamera(eventData);
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(activeDragParent, eventData.position, eventCamera, out Vector2 localPointerPosition))
+            return;
+
+        rect.anchoredPosition = localPointerPosition - dragPointerOffset;
+    }
+
+    private Camera GetEventCamera(PointerEventData eventData)
+    {
+        if (eventData != null)
+        {
+            if (eventData.pressEventCamera != null)
+                return eventData.pressEventCamera;
+
+            if (eventData.enterEventCamera != null)
+                return eventData.enterEventCamera;
+        }
+
+        return canvas != null ? canvas.worldCamera : null;
     }
 }
