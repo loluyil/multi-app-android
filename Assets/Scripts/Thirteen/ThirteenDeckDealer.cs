@@ -52,6 +52,7 @@ public class ThirteenDeckDealer : MonoBehaviour
     private readonly Queue<GameObject> tweenCardPool = new Queue<GameObject>();
     private Coroutine dealCoroutine;
     private bool animateLocalDealPreview = true;
+    private int localSeatForDealAnimation;
 
     public IReadOnlyDictionary<string, Sprite> SpriteLookup => spriteLookup;
     public bool HasDealtHands => playerHand.Count == 13 && opponentHandA.Count == 13 && opponentHandB.Count == 13 && opponentHandC.Count == 13;
@@ -120,12 +121,13 @@ public class ThirteenDeckDealer : MonoBehaviour
         opponentHandC = SortHand(deck.Skip(39).Take(13).ToList());
     }
 
-    public void PlayPreparedDealAnimation(bool animateLocalPreview = true)
+    public void PlayPreparedDealAnimation(bool animateLocalPreview = true, int localSeat = 0)
     {
         if (!HasDealtHands)
             return;
 
         animateLocalDealPreview = animateLocalPreview;
+        localSeatForDealAnimation = Mathf.Clamp(localSeat, 0, 3);
 
         if (dealCoroutine != null)
             StopCoroutine(dealCoroutine);
@@ -161,7 +163,7 @@ public class ThirteenDeckDealer : MonoBehaviour
         ClearOpponentContainer(player4Container, true);
 
         if (playerHandHolder != null && animateLocalDealPreview)
-            playerHandHolder.PrepareDealPreview(playerHand.Count);
+            playerHandHolder.PrepareDealPreview(GetHandForSeat(localSeatForDealAnimation).Count);
 
         RectTransform deckRect = GetComponent<RectTransform>();
         Canvas rootCanvas = GetComponentInParent<Canvas>();
@@ -178,7 +180,8 @@ public class ThirteenDeckDealer : MonoBehaviour
             int seat = i % 4;
             seatCardCounts[seat]++;
 
-            RectTransform targetContainer = seat switch
+            int visualSeat = VisualOffsetForSeat(seat, localSeatForDealAnimation);
+            RectTransform targetContainer = visualSeat switch
             {
                 0 => localHandRect,
                 1 => player2Container,
@@ -207,25 +210,27 @@ public class ThirteenDeckDealer : MonoBehaviour
             CanvasGroup canvasGroup = dealCard.GetComponent<CanvasGroup>();
             if (canvasGroup != null) canvasGroup.blocksRaycasts = false;
 
-            bool isSide = seat == 1 || seat == 3;
+            bool isSide = visualSeat == 1 || visualSeat == 3;
             float endRotation = isSide ? sideCardBackRotation : 0f;
 
             int capturedSeat = seat;
+            int capturedVisualSeat = visualSeat;
             int capturedCount = seatCardCounts[seat];
             int capturedPlayerIndex = seatCardCounts[seat] - 1;
 
             dealRect.DOMove(targetContainer.position, dealTweenDuration).SetEase(Ease.OutQuad);
             dealRect.DOScale(Vector3.one, dealTweenDuration).SetEase(Ease.OutQuad);
 
-            if (capturedSeat == 0)
+            if (capturedVisualSeat == 0)
             {
                 dealRect.DOLocalRotate(Vector3.zero, dealTweenDuration).SetEase(Ease.OutQuad)
                     .OnComplete(() =>
                     {
                         ReleaseTweenCard(dealCard);
 
-                        if (animateLocalDealPreview && playerHandHolder != null && capturedPlayerIndex < playerHand.Count)
-                            playerHandHolder.AnimateDealPreviewCard(playerHand[capturedPlayerIndex], spriteLookup, deckRect.position, capturedPlayerIndex);
+                        IReadOnlyList<Card.CardData> localHand = GetHandForSeat(localSeatForDealAnimation);
+                        if (animateLocalDealPreview && playerHandHolder != null && capturedPlayerIndex < localHand.Count)
+                            playerHandHolder.AnimateDealPreviewCard(localHand[capturedPlayerIndex], spriteLookup, deckRect.position, capturedPlayerIndex);
                     });
             }
             else
@@ -235,9 +240,15 @@ public class ThirteenDeckDealer : MonoBehaviour
                     {
                         ReleaseTweenCard(dealCard);
 
-                        RectTransform container = GetContainerForSeat(capturedSeat);
+                        RectTransform container = capturedVisualSeat switch
+                        {
+                            1 => player2Container,
+                            2 => player3Container,
+                            3 => player4Container,
+                            _ => null
+                        };
                         if (container != null)
-                            AddOneCardBack(container, capturedSeat == 1 || capturedSeat == 3, capturedCount);
+                            AddOneCardBack(container, capturedVisualSeat == 1 || capturedVisualSeat == 3, capturedCount);
                     });
             }
 
@@ -246,7 +257,7 @@ public class ThirteenDeckDealer : MonoBehaviour
 
         yield return new WaitForSeconds(dealTweenDuration);
 
-        RefreshOpponentVisuals(opponentHandA.Count, opponentHandB.Count, opponentHandC.Count);
+        RefreshOpponentVisualsForLocalSeat(localSeatForDealAnimation);
 
         IsDealing = false;
         dealCoroutine = null;
@@ -285,6 +296,15 @@ public class ThirteenDeckDealer : MonoBehaviour
         PopulateOpponentHand(player2Container, Mathf.Max(0, opponentACount), true);
         PopulateOpponentHand(player3Container, Mathf.Max(0, opponentBCount), false);
         PopulateOpponentHand(player4Container, Mathf.Max(0, opponentCCount), true);
+    }
+
+    public void RefreshOpponentVisualsForLocalSeat(int localSeat)
+    {
+        int normalizedLocalSeat = Mathf.Clamp(localSeat, 0, 3);
+        RefreshOpponentVisuals(
+            GetHandForSeat((normalizedLocalSeat + 1) % 4).Count,
+            GetHandForSeat((normalizedLocalSeat + 2) % 4).Count,
+            GetHandForSeat((normalizedLocalSeat + 3) % 4).Count);
     }
 
     public static string GetSuitSpriteName(Card.Suit suit)
@@ -361,6 +381,11 @@ public class ThirteenDeckDealer : MonoBehaviour
     {
         GameObject found = GameObject.Find(name);
         return found != null ? found.GetComponent<RectTransform>() : null;
+    }
+
+    private static int VisualOffsetForSeat(int absoluteSeat, int localSeat)
+    {
+        return ((absoluteSeat - localSeat) % 4 + 4) % 4;
     }
 
     private void PopulateOpponentHand(RectTransform container, int count, bool isSidePlayer)

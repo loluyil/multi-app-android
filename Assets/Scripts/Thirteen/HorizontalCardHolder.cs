@@ -122,9 +122,14 @@ public class HorizontalCardHolder : MonoBehaviour
                 continue;
 
             bool hasData = i < count;
-            card.gameObject.SetActive(hasData);
             if (!hasData)
+            {
+                card.gameObject.SetActive(false);
                 continue;
+            }
+
+            card.gameObject.SetActive(true);
+            SetCardVisualVisible(card, false);
 
             Card.CardData data = sortedHand[i];
             spriteLookup.TryGetValue(data.SpriteKey, out Sprite sprite);
@@ -134,6 +139,7 @@ public class HorizontalCardHolder : MonoBehaviour
             card.SnapToLocal(Vector2.zero);
             card.SnapScale(Vector3.one);
             card.SetInteractionEnabled(handInteractionEnabled);
+            SetCardVisualVisible(card, true);
         }
 
         handStartSlotIndex = GetCenteredStartIndex(count);
@@ -165,7 +171,8 @@ public class HorizontalCardHolder : MonoBehaviour
             card.SnapToLocal(Vector2.zero);
             card.SnapScale(Vector3.one);
             card.SetInteractionEnabled(false);
-            card.gameObject.SetActive(false);
+            card.gameObject.SetActive(true);
+            SetCardVisualVisible(card, false);
         }
     }
 
@@ -245,6 +252,24 @@ public class HorizontalCardHolder : MonoBehaviour
 
         dealPreviewCards.Clear();
         hasDealPreview = false;
+    }
+
+    private static void SetCardVisualVisible(Card card, bool visible)
+    {
+        if (card == null)
+            return;
+
+        Graphic[] graphics = card.GetComponentsInChildren<Graphic>(true);
+        for (int i = 0; i < graphics.Length; i++)
+        {
+            Graphic graphic = graphics[i];
+            if (graphic == null)
+                continue;
+
+            Color color = graphic.color;
+            color.a = visible ? 1f : 0f;
+            graphic.color = color;
+        }
     }
 
     public List<Card.CardData> GetSelectedCards()
@@ -607,6 +632,13 @@ public class HorizontalCardHolder : MonoBehaviour
                 rect.anchoredPosition = Vector2.zero;
                 rect.localScale = Vector3.one;
             }
+
+            Card card = cardObject.GetComponent<Card>();
+            if (card != null)
+            {
+                card.SetInteractionEnabled(false);
+                SetCardVisualVisible(card, false);
+            }
         }
 
         initialized = true;
@@ -634,6 +666,13 @@ public class HorizontalCardHolder : MonoBehaviour
             {
                 rect.anchoredPosition = Vector2.zero;
                 rect.localScale = Vector3.one;
+            }
+
+            Card card = cardObject.GetComponent<Card>();
+            if (card != null)
+            {
+                card.SetInteractionEnabled(false);
+                SetCardVisualVisible(card, false);
             }
         }
 
@@ -682,6 +721,13 @@ public class HorizontalCardHolder : MonoBehaviour
             {
                 cardRect.anchoredPosition = Vector2.zero;
                 cardRect.localScale = Vector3.one;
+            }
+
+            Card card = cardObject.GetComponent<Card>();
+            if (card != null)
+            {
+                card.SetInteractionEnabled(false);
+                SetCardVisualVisible(card, false);
             }
         }
     }

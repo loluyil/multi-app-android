@@ -471,7 +471,8 @@ public class ThirteenPhotonRealtimeService : IThirteenMultiplayerService,
 
     public void OnConnectedToMaster()
     {
-        SetStatus("Connected to Photon.");
+        string region = string.IsNullOrWhiteSpace(client.CloudRegion) ? "unknown" : client.CloudRegion;
+        SetStatus($"Connected to Photon ({region}).");
         RunPendingOperation();
     }
 
@@ -480,7 +481,11 @@ public class ThirteenPhotonRealtimeService : IThirteenMultiplayerService,
         busy = false;
         currentLobby = null;
         lobbyRevision++;
-        SetStatus($"Disconnected: {cause}");
+        string operation = pendingOperation == PendingOperation.None ? "idle" : pendingOperation.ToString().ToLowerInvariant();
+        string room = string.IsNullOrWhiteSpace(pendingRoomCode) ? "none" : pendingRoomCode;
+        string region = string.IsNullOrWhiteSpace(client.CloudRegion) ? "unknown" : client.CloudRegion;
+        pendingOperation = PendingOperation.None;
+        SetStatus($"Disconnected: {cause} (op={operation}, room={room}, region={region})");
     }
 
     public void OnRegionListReceived(RegionHandler regionHandler)
@@ -513,7 +518,7 @@ public class ThirteenPhotonRealtimeService : IThirteenMultiplayerService,
     {
         busy = false;
         pendingOperation = PendingOperation.None;
-        SetStatus($"Create failed: {message}");
+        SetStatus($"Create failed [{returnCode}]: {message}");
     }
 
     public void OnFriendListUpdate(List<FriendInfo> friendList)
@@ -535,14 +540,14 @@ public class ThirteenPhotonRealtimeService : IThirteenMultiplayerService,
         }
 
         RefreshLobbyState();
-        SetStatus($"Lobby code: {client.CurrentRoom?.Name}");
+        SetStatus("Connected");
     }
 
     public void OnJoinRoomFailed(short returnCode, string message)
     {
         busy = false;
         pendingOperation = PendingOperation.None;
-        SetStatus($"Join failed: {message}");
+        SetStatus($"Join failed [{returnCode}]: {message}");
     }
 
     public void OnJoinRandomFailed(short returnCode, string message)
