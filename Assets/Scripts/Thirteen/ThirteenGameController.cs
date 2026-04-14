@@ -210,10 +210,7 @@ public class ThirteenGameController : MonoBehaviour
                 seed = 0;
 
             if (deckDealer != null && !deckDealer.HasDealtHands && !deckDealer.IsDealing)
-            {
-                deckDealer.PrepareHands(seed);
-                deckDealer.PlayPreparedDealAnimation(animateLocalPreview: true, localSeat: localPlayerSeat);
-            }
+                deckDealer.ShuffleAndDeal(seed);
         }
 
         if (deckDealer != null && deckDealer.IsDealing)
@@ -482,12 +479,6 @@ public class ThirteenGameController : MonoBehaviour
     {
         if (leaveConfirmArmed)
         {
-            if (isMultiplayer)
-            {
-                ThirteenMultiplayerServiceRegistry.Reset();
-                ThirteenSessionRuntime.Instance.ConfigureSolo();
-            }
-
             AppSceneLoader.Load(AppSceneNames.ThirteenMenu);
             return;
         }
@@ -586,7 +577,7 @@ public class ThirteenGameController : MonoBehaviour
         int nextSeed = rng.Next(int.MinValue, int.MaxValue);
         int nextStartSeat = rng.Next(0, 4);
         rematchSequence++;
-        string seatsCsv = BuildRematchSeatAssignmentsCsv();
+        string seatsCsv = string.IsNullOrEmpty(lastSeenSeatsCsv) ? mpService.GetMatchProperty("seats") ?? string.Empty : lastSeenSeatsCsv;
 
         mpService.PublishMatchProperties(new Dictionary<string, string>
         {
@@ -736,8 +727,7 @@ public class ThirteenGameController : MonoBehaviour
         matchState = new ThirteenMatchState(startingSeat, enforceTurnOrder: !allowOutOfTurnTesting);
         gameOver = false;
         rematchInProgress = false;
-        localActionSeq = 0;
-        remoteLastSeenSeq.Clear();
+        awaitingLocalConfirmation = false;
         appliedMoveLogCount = 0;
 
         SetPlayedCardText(string.Empty);
@@ -1453,7 +1443,7 @@ public class ThirteenGameController : MonoBehaviour
                     foreach (List<Card.CardData> fourKind in GenerateSameRankGroups(hand, 4))
                         yield return fourKind;
 
-                    foreach (List<Card.CardData> pairSequence in GeneratePairSequences(hand))
+                    foreach (List<Card.CardData> pairSequence in GeneratePairSequences(hand, 3))
                         yield return pairSequence;
                 }
                 break;
@@ -1948,35 +1938,6 @@ public class ThirteenGameController : MonoBehaviour
         return moveLog.Split(';').Count(entry => !string.IsNullOrWhiteSpace(entry));
     }
 
-    private string BuildRematchSeatAssignmentsCsv()
-    {
-        if (mpService?.CurrentLobby?.Players != null)
-        {
-            List<ThirteenLobbyPlayer> humans = mpService.CurrentLobby.Players
-                .Where(player => player != null && !player.IsBot && !player.IsPlaceholder && player.IsConnected)
-                .OrderBy(player => player.Id, System.StringComparer.Ordinal)
-                .ToList();
-            List<ThirteenLobbyPlayer> bots = mpService.CurrentLobby.Players
-                .Where(player => player != null && player.IsBot)
-                .OrderBy(player => player.Id, System.StringComparer.Ordinal)
-                .ToList();
-
-            if (humans.Count > 0)
-            {
-                List<string> parts = new List<string>(humans.Count + bots.Count);
-                int seat = 0;
-                foreach (ThirteenLobbyPlayer player in humans)
-                    parts.Add($"{player.Id}:{seat++}");
-                foreach (ThirteenLobbyPlayer player in bots)
-                    parts.Add($"{player.Id}:{seat++}");
-
-                return string.Join(",", parts);
-            }
-        }
-
-        return string.IsNullOrEmpty(lastSeenSeatsCsv) ? mpService?.GetMatchProperty("seats") ?? string.Empty : lastSeenSeatsCsv;
-    }
-
     private void BeginRematch(int? seed, int? startSeatOverride, string seatsCsv)
     {
         if (rematchCoroutine != null)
@@ -1989,11 +1950,11 @@ public class ThirteenGameController : MonoBehaviour
     {
         rematchInProgress = true;
         gameOver = false;
+        awaitingLocalConfirmation = false;
         localActionSeq = 0;
-        pendingSelfBroadcasts = 0;
+        remoteLastSeenSeq.Clear();
         appliedMoveLogCount = 0;
         trickPlayCount = 0;
-        remoteLastSeenSeq.Clear();
 
         if (botTurnCoroutine != null)
         {
@@ -2059,7 +2020,7 @@ public class ThirteenGameController : MonoBehaviour
         yield return null;
         yield return FadeRematchOverlay(0f);
 
-        deckDealer.PlayPreparedDealAnimation(animateLocalPreview: true, localSeat: localPlayerSeat);
+        deckDealer.PlayPreparedDealAnimation();
         yield return new WaitUntil(() => !deckDealer.IsDealing);
         FinishInitialization();
         rematchCoroutine = null;
