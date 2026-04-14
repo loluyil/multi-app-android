@@ -33,7 +33,7 @@ public class ThirteenMatchState
         CurrentHand = default;
     }
 
-    public PlayResult TryPlay(int seat, IReadOnlyList<Card.CardData> cards)
+    public PlayResult CanPlay(int seat, IReadOnlyList<Card.CardData> cards)
     {
         if (!IsSeatValid(seat))
             return Fail("Seat is invalid.");
@@ -54,16 +54,25 @@ public class ThirteenMatchState
         if (!ThirteenRules.CanPlayOn(analyzedHand, CurrentHand, out string reason))
             return Fail(reason, analyzedHand);
 
-        CurrentHand = analyzedHand;
+        return new PlayResult(true, "Play accepted.", analyzedHand);
+    }
+
+    public PlayResult TryPlay(int seat, IReadOnlyList<Card.CardData> cards)
+    {
+        PlayResult validation = CanPlay(seat, cards);
+        if (!validation.Success)
+            return validation;
+
+        CurrentHand = validation.Hand;
         LeadingSeat = seat;
         CurrentTurnSeat = GetNextActiveSeat(seat);
         openingThreeOfSpadesRequired = false;
 
-        Debug.Log($"[Thirteen] Seat {seat} played {ThirteenRules.Describe(analyzedHand)}");
-        return new PlayResult(true, "Play accepted.", analyzedHand);
+        Debug.Log($"[Thirteen] Seat {seat} played {ThirteenRules.Describe(validation.Hand)}");
+        return validation;
     }
 
-    public bool TryPass(int seat, out string reason)
+    public bool CanPass(int seat, out string reason)
     {
         if (!IsSeatValid(seat))
         {
@@ -94,6 +103,15 @@ public class ThirteenMatchState
             reason = $"Seat {seat} already passed this trick.";
             return false;
         }
+
+        reason = "Pass accepted.";
+        return true;
+    }
+
+    public bool TryPass(int seat, out string reason)
+    {
+        if (!CanPass(seat, out reason))
+            return false;
 
         passed[seat] = true;
         Debug.Log($"[Thirteen] Seat {seat} passed.");
