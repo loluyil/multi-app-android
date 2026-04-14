@@ -226,15 +226,20 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
 
         RectTransform textArea = GetOrCreatePanel(inputObject.transform, "Text Area", stretch: true);
         SetAnchors(textArea, Vector2.zero, Vector2.one, new Vector2(18f, 10f), new Vector2(-18f, -10f));
+        GetOrAddComponent<RectMask2D>(textArea.gameObject);
 
         TMP_Text text = GetOrCreateText(textArea, "Text", string.Empty, 24f, FontStyles.Normal);
         text.alignment = TextAlignmentOptions.Left;
         text.color = Color.white;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+        text.overflowMode = TextOverflowModes.Overflow;
         SetAnchors(text.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
         TMP_Text placeholderText = GetOrCreateText(textArea, "Placeholder", placeholder, 24f, FontStyles.Italic);
         placeholderText.alignment = TextAlignmentOptions.Left;
         placeholderText.color = new Color(1f, 1f, 1f, 0.45f);
+        placeholderText.textWrappingMode = TextWrappingModes.NoWrap;
+        placeholderText.overflowMode = TextOverflowModes.Ellipsis;
         SetAnchors(placeholderText.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
         TMP_InputField inputField = GetOrAddComponent<TMP_InputField>(inputObject);
@@ -242,6 +247,8 @@ public class ThirteenMenuSceneBuilder : MonoBehaviour
         inputField.textComponent = text as TextMeshProUGUI;
         inputField.placeholder = placeholderText;
         inputField.lineType = TMP_InputField.LineType.SingleLine;
+        inputField.textComponent.textWrappingMode = TextWrappingModes.NoWrap;
+        inputField.textViewport.GetComponent<RectMask2D>().enabled = true;
         inputField.caretColor = Color.white;
         inputField.selectionColor = new Color(0.45f, 0.7f, 1f, 0.35f);
         return inputField;

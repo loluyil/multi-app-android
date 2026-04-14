@@ -78,7 +78,7 @@ public static class ThirteenCommentaryStrings
     {
         return rank switch
         {
-            1 => "A",
+            1 => "Ace",
             11 => "J",
             12 => "Q",
             13 => "K",
@@ -94,7 +94,7 @@ public static class ThirteenCommentaryStrings
         switch (hand.Type)
         {
             case ThirteenRules.HandType.Single:
-                return RankNameFromStrength(hand.PrimaryRankStrength).ToLower()
+                return RankNameFromStrength(hand.PrimaryRankStrength)
                     + " of " + SuitName(cards[0].suit);
             case ThirteenRules.HandType.Pair:
                 return "pair";
@@ -134,7 +134,7 @@ public static class ThirteenCommentaryStrings
             if (rank == lastRank)
                 continue;
             lastRank = rank;
-            rankNames.Add(RankName(rank).ToLower());
+            rankNames.Add(RankName(rank));
         }
         return string.Join(",", rankNames);
     }
@@ -154,7 +154,7 @@ public static class ThirteenCommentaryStrings
             8 => "J",
             9 => "Q",
             10 => "K",
-            11 => "A",
+            11 => "Ace",
             12 => "2",
             _ => "?",
         };

@@ -365,8 +365,8 @@ public class ThirteenPhotonRealtimeService : IThirteenMultiplayerService,
 
     private static string BuildSeatAssignments(ThirteenLobbyState lobby)
     {
-        List<ThirteenLobbyPlayer> humans = lobby.Players.Where(p => !p.IsBot).OrderBy(p => p.Id, StringComparer.Ordinal).ToList();
-        List<ThirteenLobbyPlayer> bots = lobby.Players.Where(p => p.IsBot).OrderBy(p => p.Id, StringComparer.Ordinal).ToList();
+        List<ThirteenLobbyPlayer> humans = lobby.Players.Where(p => !p.IsBot).ToList();
+        List<ThirteenLobbyPlayer> bots = lobby.Players.Where(p => p.IsBot).ToList();
 
         List<string> parts = new List<string>(humans.Count + bots.Count);
         int seat = 0;

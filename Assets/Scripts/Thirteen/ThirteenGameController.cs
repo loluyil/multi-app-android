@@ -24,6 +24,14 @@ public class ThirteenGameController : MonoBehaviour
     [SerializeField] private TMP_Text commentaryText;
     [SerializeField] private float commentaryLetterDelay = 0.03f;
 
+    [Header("Seat UI")]
+    [SerializeField] private Color seatNameColor = Color.black;
+    [SerializeField] private Color activeSeatNameColor = new Color(196f / 255f, 1f, 206f / 255f, 1f);
+    [SerializeField] private Vector2 seatNamePositionBottom = new Vector2(20f, -234f);
+    [SerializeField] private Vector2 seatNamePositionLeft = new Vector2(-545f, 104.56f);
+    [SerializeField] private Vector2 seatNamePositionTop = new Vector2(20f, 504f);
+    [SerializeField] private Vector2 seatNamePositionRight = new Vector2(607f, 104.56f);
+
     // Inline templates for turn phase / played card / win text.
     // (The ThirteenCommentaryStrings file only holds the random commentary pools now.)
     private const string LocalTurnTemplate = "your turn";
@@ -32,7 +40,7 @@ public class ThirteenGameController : MonoBehaviour
     private const string RemotePassedTemplate = "{player} passed";
     private const string LocalWonTemplate = "you win!";
     private const string RemoteWonTemplate = "{player} wins";
-    private const string PlayedCardTemplate = "{cards}";
+    private const string PlayedCardTemplate = "{player} played {cards}";
 
     private Coroutine commentaryTypeCoroutine;
 
@@ -108,13 +116,13 @@ public class ThirteenGameController : MonoBehaviour
     private bool isMultiplayer;
     private bool isHost;
     private int localActionSeq;
-    private int pendingSelfBroadcasts;
     private int lastSeenMatchRevision = -1;
     private int appliedMoveLogCount;
     private string lastSeenSeatsCsv = string.Empty;
     private readonly Dictionary<string, int> remoteLastSeenSeq = new Dictionary<string, int>();
     private readonly Dictionary<int, string> seatToPlayerId = new Dictionary<int, string>();
     private readonly Dictionary<string, int> playerIdToSeat = new Dictionary<string, int>();
+    private readonly TMP_Text[] seatNameTexts = new TMP_Text[4];
     private string leavePromptDefaultText = "leave";
     private bool leaveConfirmArmed;
     private Graphic leaveButtonGraphic;
@@ -127,6 +135,8 @@ public class ThirteenGameController : MonoBehaviour
     private CanvasGroup rematchFadeGroup;
     private Image rematchFadeImage;
     private float shakeBlockUntilTime;
+    private RectTransform seatUiRoot;
+    private bool awaitingLocalConfirmation;
 
     private void Awake()
     {
@@ -141,6 +151,7 @@ public class ThirteenGameController : MonoBehaviour
 
         ResolveUiReferences();
         WireLeaveUi();
+        EnsureSeatUi();
         HideLeaveConfirmation();
         HideRematchButton();
     }
@@ -247,11 +258,40 @@ public class ThirteenGameController : MonoBehaviour
             seatToPlayerId[seat] = pid;
             playerIdToSeat[pid] = seat;
         }
+
+        RefreshSeatUi();
     }
 
     private bool SeatIsBot(int seat)
     {
         return seatToPlayerId.TryGetValue(seat, out string pid) && pid != null && pid.StartsWith("bot-");
+    }
+
+    private string GetSeatDisplayName(int seat, bool preferYouForLocal = true)
+    {
+        if (seat == localPlayerSeat && preferYouForLocal)
+            return "You";
+
+        if (seatToPlayerId.TryGetValue(seat, out string playerId) && !string.IsNullOrWhiteSpace(playerId))
+        {
+            ThirteenLobbyState lobby = mpService != null ? mpService.CurrentLobby : null;
+            if (lobby != null)
+            {
+                ThirteenLobbyPlayer player = lobby.Players.FirstOrDefault(candidate => candidate != null && candidate.Id == playerId);
+                if (player != null && !string.IsNullOrWhiteSpace(player.DisplayName))
+                    return player.DisplayName.Trim();
+            }
+
+            if (playerId.StartsWith("bot-"))
+                return playerId.Replace("bot-", "Bot ");
+        }
+
+        return $"Player {seat + 1}";
+    }
+
+    private string GetAnnouncementName(int seat)
+    {
+        return seat == localPlayerSeat ? "you" : GetSeatDisplayName(seat, preferYouForLocal: false);
     }
 
     private void OnDestroy()
@@ -291,6 +331,7 @@ public class ThirteenGameController : MonoBehaviour
         AttachButtonPop(leaveButton);
         AttachButtonPop(rematchButton);
         EnsureRematchFadeOverlay();
+        EnsureSeatUi();
     }
 
     private void WireLeaveUi()
@@ -307,6 +348,131 @@ public class ThirteenGameController : MonoBehaviour
             rematchButton.onClick.AddListener(OnRematchButtonClicked);
         }
 
+    }
+
+    private void EnsureSeatUi()
+    {
+        if (seatUiRoot == null)
+        {
+            Canvas rootCanvas = GetComponentInParent<Canvas>();
+            if (rootCanvas == null)
+                rootCanvas = FindFirstObjectByType<Canvas>();
+
+            if (rootCanvas == null)
+                return;
+
+            Transform existing = rootCanvas.transform.Find("SeatUiRuntime");
+            GameObject rootObject;
+            if (existing != null)
+            {
+                rootObject = existing.gameObject;
+            }
+            else
+            {
+                rootObject = new GameObject("SeatUiRuntime", typeof(RectTransform));
+                rootObject.transform.SetParent(rootCanvas.transform, false);
+            }
+
+            seatUiRoot = rootObject.GetComponent<RectTransform>();
+            seatUiRoot.anchorMin = Vector2.zero;
+            seatUiRoot.anchorMax = Vector2.one;
+            seatUiRoot.offsetMin = Vector2.zero;
+            seatUiRoot.offsetMax = Vector2.zero;
+            seatUiRoot.SetAsLastSibling();
+        }
+
+        for (int seat = 0; seat < 4; seat++)
+        {
+            if (seatNameTexts[seat] == null)
+                seatNameTexts[seat] = CreateSeatUiText($"SeatName_{seat}", 30f, FontStyles.Bold);
+        }
+
+        for (int seat = 0; seat < 4; seat++)
+        {
+            Transform existingIndicator = seatUiRoot.Find($"TurnIndicator_{seat}");
+            if (existingIndicator != null)
+                Destroy(existingIndicator.gameObject);
+        }
+    }
+
+    private TMP_Text CreateSeatUiText(string objectName, float fontSize, FontStyles fontStyle)
+    {
+        if (seatUiRoot == null)
+            return null;
+
+        GameObject textObject = new GameObject(objectName, typeof(RectTransform), typeof(TextMeshProUGUI));
+        textObject.transform.SetParent(seatUiRoot, false);
+
+        RectTransform rect = textObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(280f, 56f);
+
+        TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
+        text.alignment = TextAlignmentOptions.Center;
+        text.fontSize = fontSize;
+        text.fontStyle = fontStyle;
+        text.color = seatNameColor;
+        text.raycastTarget = false;
+
+        TMP_Text referenceText = turnPhaseText != null ? turnPhaseText : playedCardText;
+        if (referenceText != null)
+        {
+            text.font = referenceText.font;
+            text.fontSharedMaterial = referenceText.fontSharedMaterial;
+        }
+
+        return text;
+    }
+
+    private void RefreshSeatUi()
+    {
+        if (seatUiRoot == null)
+            EnsureSeatUi();
+        if (seatUiRoot == null)
+            return;
+
+        for (int seat = 0; seat < 4; seat++)
+        {
+            int visualSeat = VisualOffsetForSeat(seat);
+            Vector2 anchoredPosition = GetSeatLabelPosition(visualSeat);
+
+            TMP_Text nameText = seatNameTexts[seat];
+            if (nameText != null)
+            {
+                nameText.gameObject.SetActive(true);
+                RectTransform rect = nameText.rectTransform;
+                rect.anchoredPosition = anchoredPosition;
+                nameText.alignment = SeatLabelAlignmentForVisualSeat(visualSeat);
+                nameText.text = GetSeatDisplayName(seat, preferYouForLocal: false);
+                nameText.color = matchState != null && !gameOver && matchState.CurrentTurnSeat == seat
+                    ? activeSeatNameColor
+                    : seatNameColor;
+            }
+        }
+
+        if (seatUiRoot != null)
+            seatUiRoot.SetAsLastSibling();
+    }
+
+    private Vector2 GetSeatLabelPosition(int visualSeat)
+    {
+        return visualSeat switch
+        {
+            0 => seatNamePositionBottom,
+            1 => seatNamePositionLeft,
+            2 => seatNamePositionTop,
+            3 => seatNamePositionRight,
+            _ => Vector2.zero
+        };
+    }
+
+    private static TextAlignmentOptions SeatLabelAlignmentForVisualSeat(int visualSeat)
+    {
+        return visualSeat switch
+        {
+            _ => TextAlignmentOptions.Center
+        };
     }
 
     private void OnLeaveButtonClicked()
@@ -455,6 +621,9 @@ public class ThirteenGameController : MonoBehaviour
         if (gameOver || matchState == null)
             return false;
 
+        if (awaitingLocalConfirmation)
+            return false;
+
         if (!allowOutOfTurnTesting && matchState.CurrentTurnSeat != localPlayerSeat)
         {
             Debug.Log("[Thirteen] Local play rejected: not the local seat turn.");
@@ -466,6 +635,27 @@ public class ThirteenGameController : MonoBehaviour
         {
             Debug.Log("[Thirteen] Local play rejected: no cards selected.");
             return false;
+        }
+
+        ThirteenMatchState.PlayResult validation = matchState.CanPlay(localPlayerSeat, sortedCards);
+        if (!validation.Success)
+        {
+            Debug.Log($"[Thirteen] Local play rejected: {validation.Reason}");
+            return false;
+        }
+
+        if (isMultiplayer && !isHost)
+        {
+            localActionSeq++;
+            awaitingLocalConfirmation = true;
+            localHandHolder.ClearSelection();
+            localHandHolder.SetTurnActive(false);
+            localHandHolder.SetHandInteractionEnabled(false);
+            if (passButton != null)
+                passButton.interactable = false;
+
+            mpService.SubmitPlayerAction(SerializePlayerAction(localActionSeq, $"play:{SerializeCards(sortedCards)}"));
+            return true;
         }
 
         ThirteenRules.AnalyzedHand previousHand = matchState.CurrentHand;
@@ -482,15 +672,7 @@ public class ThirteenGameController : MonoBehaviour
         {
             string moveData = $"{localPlayerSeat}|play:{SerializeCards(sortedCards)}";
             if (isHost)
-            {
                 PublishMove(localPlayerSeat, moveData);
-            }
-            else
-            {
-                localActionSeq++;
-                pendingSelfBroadcasts++;
-                mpService.SubmitPlayerAction($"{localActionSeq}|play:{SerializeCards(sortedCards)}");
-            }
         }
 
         CompletePlay(localPlayerSeat, sortedCards, draggedCards, previousHand);
@@ -545,6 +727,7 @@ public class ThirteenGameController : MonoBehaviour
         matchState = new ThirteenMatchState(startingSeat, enforceTurnOrder: !allowOutOfTurnTesting);
         gameOver = false;
         rematchInProgress = false;
+        awaitingLocalConfirmation = false;
         appliedMoveLogCount = 0;
 
         SetPlayedCardText(string.Empty);
@@ -554,6 +737,7 @@ public class ThirteenGameController : MonoBehaviour
         trickPlayCount = 0;
 
         RefreshOpponentVisuals();
+        RefreshSeatUi();
         UpdateTurnState();
     }
 
@@ -814,7 +998,7 @@ public class ThirteenGameController : MonoBehaviour
             return;
 
         ThirteenRules.AnalyzedHand hand = ThirteenRules.Analyze(playedCards);
-        string playerLabel = ThirteenCommentaryStrings.PlayerLabel(seat, localPlayerSeat);
+        string playerLabel = GetAnnouncementName(seat);
         string cardsText = ThirteenCommentaryStrings.DescribeHand(hand, playedCards);
 
         // Compute and trigger shake BEFORE incrementing the play count — strength depends on
@@ -861,7 +1045,7 @@ public class ThirteenGameController : MonoBehaviour
             return;
         }
 
-        string playerLabel = ThirteenCommentaryStrings.PlayerLabel(seat, localPlayerSeat);
+        string playerLabel = GetAnnouncementName(seat);
         string phaseTemplate = seat == localPlayerSeat ? LocalPassedTemplate : RemotePassedTemplate;
         SetTurnPhaseText(ThirteenCommentaryStrings.Format(phaseTemplate, player: playerLabel));
     }
@@ -871,10 +1055,33 @@ public class ThirteenGameController : MonoBehaviour
         if (gameOver || matchState == null)
             return;
 
+        if (awaitingLocalConfirmation)
+            return;
+
         if (!allowOutOfTurnTesting && matchState.CurrentTurnSeat != localPlayerSeat)
             return;
 
-        bool passed = matchState.TryPass(localPlayerSeat, out string reason);
+        if (!matchState.CanPass(localPlayerSeat, out string reason))
+        {
+            Debug.Log($"[Thirteen] Local pass rejected: {reason}");
+            return;
+        }
+
+        if (isMultiplayer && !isHost)
+        {
+            localActionSeq++;
+            awaitingLocalConfirmation = true;
+            localHandHolder.ClearSelection();
+            localHandHolder.SetTurnActive(false);
+            localHandHolder.SetHandInteractionEnabled(false);
+            if (passButton != null)
+                passButton.interactable = false;
+
+            mpService.SubmitPlayerAction(SerializePlayerAction(localActionSeq, "pass"));
+            return;
+        }
+
+        bool passed = matchState.TryPass(localPlayerSeat, out reason);
         if (!passed)
         {
             Debug.Log($"[Thirteen] Local pass rejected: {reason}");
@@ -887,15 +1094,7 @@ public class ThirteenGameController : MonoBehaviour
         if (isMultiplayer)
         {
             if (isHost)
-            {
                 PublishMove(localPlayerSeat, $"{localPlayerSeat}|pass");
-            }
-            else
-            {
-                localActionSeq++;
-                pendingSelfBroadcasts++;
-                mpService.SubmitPlayerAction($"{localActionSeq}|pass");
-            }
         }
 
         if (matchState.TrickIsOpen)
@@ -1037,13 +1236,14 @@ public class ThirteenGameController : MonoBehaviour
 
         bool canPass = allowOutOfTurnTesting
             ? !matchState.TrickIsOpen
-            : isLocalTurn && !matchState.TrickIsOpen && matchState.LeadingSeat != localPlayerSeat;
+            : isLocalTurn && !awaitingLocalConfirmation && !matchState.TrickIsOpen && matchState.LeadingSeat != localPlayerSeat;
 
         if (passButton != null)
             passButton.interactable = canPass;
 
-        localHandHolder.SetHandInteractionEnabled(true);
-        localHandHolder.SetTurnActive(allowOutOfTurnTesting || isLocalTurn);
+        bool localCanInteract = !awaitingLocalConfirmation && (allowOutOfTurnTesting || isLocalTurn);
+        localHandHolder.SetHandInteractionEnabled(localCanInteract);
+        localHandHolder.SetTurnActive(localCanInteract);
         Debug.Log($"[Thirteen] Turn: Seat {currentSeat}");
 
         if (matchState.TrickIsOpen)
@@ -1052,11 +1252,13 @@ public class ThirteenGameController : MonoBehaviour
         }
         else
         {
-        string turnPlayerLabel = ThirteenCommentaryStrings.PlayerLabel(currentSeat, localPlayerSeat);
+        string turnPlayerLabel = GetAnnouncementName(currentSeat);
         SetTurnPhaseText(isLocalTurn
             ? LocalTurnTemplate
             : ThirteenCommentaryStrings.Format(RemoteTurnTemplate, player: turnPlayerLabel));
         }
+
+        RefreshSeatUi();
 
         if (allowOutOfTurnTesting || isLocalTurn)
             return;
@@ -1404,6 +1606,7 @@ public class ThirteenGameController : MonoBehaviour
     private void EndGame(int winnerSeat)
     {
         gameOver = true;
+        awaitingLocalConfirmation = false;
 
         if (botTurnCoroutine != null)
         {
@@ -1422,6 +1625,7 @@ public class ThirteenGameController : MonoBehaviour
         SetTurnPhaseText(string.Empty);
         SetPlayedCardText(string.Empty);
         SetCommentaryText(string.Empty);
+        RefreshSeatUi();
     }
 
     private sealed class RankBucket
@@ -1444,12 +1648,45 @@ public class ThirteenGameController : MonoBehaviour
         mpService.PublishMatchProperty("move_log", nextLog);
     }
 
+    private string SerializePlayerAction(int actionSequence, string payload)
+    {
+        return $"{rematchSequence}|{actionSequence}|{payload}";
+    }
+
+    private static bool TryParsePlayerAction(string action, out int actionRematchSequence, out int actionSequence, out string payload)
+    {
+        actionRematchSequence = -1;
+        actionSequence = -1;
+        payload = null;
+
+        if (string.IsNullOrEmpty(action))
+            return false;
+
+        int firstPipe = action.IndexOf('|');
+        if (firstPipe <= 0)
+            return false;
+
+        int secondPipe = action.IndexOf('|', firstPipe + 1);
+        if (secondPipe <= firstPipe + 1)
+            return false;
+
+        if (!int.TryParse(action.Substring(0, firstPipe), out actionRematchSequence))
+            return false;
+
+        if (!int.TryParse(action.Substring(firstPipe + 1, secondPipe - firstPipe - 1), out actionSequence))
+            return false;
+
+        payload = action.Substring(secondPipe + 1);
+        return !string.IsNullOrEmpty(payload);
+    }
+
     private void ProcessMatchPropertyUpdates()
     {
         string rematchValue = mpService.GetMatchProperty("rematch_seq");
         if (int.TryParse(rematchValue, out int latestRematchSequence) && latestRematchSequence > rematchSequence)
         {
             rematchSequence = latestRematchSequence;
+            awaitingLocalConfirmation = false;
 
             string rematchSeatsCsv = mpService.GetMatchProperty("seats") ?? string.Empty;
             int rematchSeed = 0;
@@ -1499,12 +1736,8 @@ public class ThirteenGameController : MonoBehaviour
         if (matchState == null)
             return;
 
-        // Non-host plays locally optimistically, so echoes for our own seat are expected no-ops.
-        if (seat == localPlayerSeat && pendingSelfBroadcasts > 0)
-        {
-            pendingSelfBroadcasts--;
-            return;
-        }
+        if (seat == localPlayerSeat)
+            awaitingLocalConfirmation = false;
 
         if (isPass)
         {
@@ -1553,20 +1786,15 @@ public class ThirteenGameController : MonoBehaviour
             if (string.IsNullOrEmpty(action))
                 continue;
 
-            int pipe = action.IndexOf('|');
-            if (pipe <= 0)
+            if (!TryParsePlayerAction(action, out int actionRematchSequence, out int seq, out string payload))
                 continue;
 
-            if (!int.TryParse(action.Substring(0, pipe), out int seq))
+            if (actionRematchSequence != rematchSequence)
                 continue;
 
             int lastSeq = remoteLastSeenSeq.TryGetValue(pid, out int prev) ? prev : 0;
             if (seq <= lastSeq)
                 continue;
-
-            remoteLastSeenSeq[pid] = seq;
-
-            string payload = action.Substring(pipe + 1);
             if (payload == "pass")
             {
                 if (!allowOutOfTurnTesting && matchState.CurrentTurnSeat != seat)
@@ -1578,6 +1806,7 @@ public class ThirteenGameController : MonoBehaviour
                     continue;
                 }
 
+                remoteLastSeenSeq[pid] = seq;
                 PublishMove(seat, $"{seat}|pass");
                 if (matchState.TrickIsOpen)
                     localHandHolder.ClearPlayArea();
@@ -1602,6 +1831,7 @@ public class ThirteenGameController : MonoBehaviour
                     continue;
                 }
 
+                remoteLastSeenSeq[pid] = seq;
                 PublishMove(seat, $"{seat}|play:{SerializeCards(sorted)}");
                 CompletePlay(seat, sorted, null, previousHand);
             }
@@ -1720,7 +1950,9 @@ public class ThirteenGameController : MonoBehaviour
     {
         rematchInProgress = true;
         gameOver = false;
-        pendingSelfBroadcasts = 0;
+        awaitingLocalConfirmation = false;
+        localActionSeq = 0;
+        remoteLastSeenSeq.Clear();
         appliedMoveLogCount = 0;
         trickPlayCount = 0;
 
@@ -1768,6 +2000,7 @@ public class ThirteenGameController : MonoBehaviour
         SetCommentaryText(string.Empty);
         HideLeaveConfirmation();
         HideRematchButton();
+        RefreshSeatUi();
 
         if (passButton != null)
             passButton.interactable = false;
