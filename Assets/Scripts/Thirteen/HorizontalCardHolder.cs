@@ -246,9 +246,7 @@ public class HorizontalCardHolder : MonoBehaviour
             GameObject previewCard = dealPreviewCards[i];
             if (previewCard != null)
             {
-                previewCard.transform.SetParent(null, false);
-                previewCard.SetActive(false);
-                Destroy(previewCard);
+                SafeDestroyCardObject(previewCard);
             }
         }
 
@@ -292,7 +290,7 @@ public class HorizontalCardHolder : MonoBehaviour
         {
             cards.Remove(card);
             if (card != null)
-                Destroy(card.gameObject);
+                SafeDestroyCardObject(card.gameObject);
         }
 
         handStartSlotIndex = GetCenteredStartIndex(cards.Count);
@@ -334,7 +332,7 @@ public class HorizontalCardHolder : MonoBehaviour
                 if (child == null)
                     continue;
 
-                Destroy(child.gameObject);
+                SafeDestroyCardObject(child.gameObject);
             }
 
             slot.gameObject.SetActive(false);
@@ -615,7 +613,7 @@ public class HorizontalCardHolder : MonoBehaviour
         ResetDragState();
 
         for (int i = transform.childCount - 1; i >= 0; i--)
-            Destroy(transform.GetChild(i).gameObject);
+            SafeDestroyCardObject(transform.GetChild(i).gameObject);
 
         slots.Clear();
         cards.Clear();
@@ -1051,6 +1049,23 @@ public class HorizontalCardHolder : MonoBehaviour
             Mathf.RoundToInt((slots.Count - cardCount) * 0.5f),
             0,
             Mathf.Max(0, slots.Count - cardCount));
+    }
+
+    private static void SafeDestroyCardObject(GameObject cardObject)
+    {
+        if (cardObject == null)
+            return;
+
+        Card card = cardObject.GetComponent<Card>();
+        if (card != null)
+            card.KillTweens();
+
+        Transform transform = cardObject.transform;
+        if (transform != null)
+            transform.DOKill();
+
+        cardObject.SetActive(false);
+        Object.Destroy(cardObject);
     }
 
     private void ResetDragState()

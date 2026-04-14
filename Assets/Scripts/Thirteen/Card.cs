@@ -69,7 +69,6 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
     private Button button;
     private Transform originalShadowParent;
     private int originalShadowSiblingIndex;
-    private Vector3 originalShadowLocalScale = Vector3.one;
     private float shadowScaleMultiplier = 1f;
     private bool isSelected;
     private bool isDragging;
@@ -78,7 +77,7 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
     private Vector3 lastWorldPosition;
     private bool hasLastWorldPosition;
     private Vector2 lastPointerScreenPosition;
-    private RectTransform dragParentRect;
+    private RectTransform activeDragParent;
     private Vector2 dragPointerOffset;
     private CardData data;
 
@@ -99,7 +98,6 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
         {
             originalShadowParent = shadowRect.parent;
             originalShadowSiblingIndex = shadowRect.GetSiblingIndex();
-            originalShadowLocalScale = shadowRect.localScale;
             shadowGraphic = shadowRect.GetComponent<Graphic>();
             if (shadowGraphic != null)
                 shadowGraphic.raycastTarget = false;
@@ -147,40 +145,23 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
         KillTweens();
         isDragging = true;
         lastPointerScreenPosition = eventData.position;
-        dragParentRect = rect.parent as RectTransform;
-        if (dragParentRect != null
-            && RectTransformUtility.ScreenPointToLocalPointInRectangle(dragParentRect, eventData.position, eventData.pressEventCamera, out Vector2 localPointerPosition))
-        {
-            dragPointerOffset = localPointerPosition - rect.anchoredPosition;
-        }
-        else
-        {
-            dragPointerOffset = Vector2.zero;
-        }
-
         if (group != null) group.blocksRaycasts = false;
         BeginDragEvent.Invoke(this);
+        CacheDragPointerOffset(eventData);
     }
 
     public void OnDrag(PointerEventData eventData)
     {
         lastPointerScreenPosition = eventData.position;
-        RectTransform currentParentRect = rect.parent as RectTransform;
-        if (currentParentRect != null
-            && RectTransformUtility.ScreenPointToLocalPointInRectangle(currentParentRect, eventData.position, eventData.pressEventCamera, out Vector2 localPointerPosition))
-        {
-            rect.anchoredPosition = localPointerPosition - dragPointerOffset;
-        }
-        else if (canvas != null)
-        {
-            rect.anchoredPosition += eventData.delta / canvas.scaleFactor;
-        }
+        UpdateDraggedPosition(eventData);
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
         lastPointerScreenPosition = eventData.position;
         isDragging = false;
+        activeDragParent = null;
+        dragPointerOffset = Vector2.zero;
         if (group != null) group.blocksRaycasts = true;
         EndDragEvent.Invoke(this);
     }
@@ -258,12 +239,7 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
 
         shadowRect.position = rect.position + (Vector3)offset;
         shadowRect.rotation = rect.rotation;
-        Vector3 desiredWorldScale = Vector3.Scale(rect.lossyScale, Vector3.Scale(originalShadowLocalScale, Vector3.one * shadowScaleMultiplier));
-        Vector3 parentWorldScale = shadowRect.parent != null ? shadowRect.parent.lossyScale : Vector3.one;
-        shadowRect.localScale = new Vector3(
-            SafeDivide(desiredWorldScale.x, parentWorldScale.x),
-            SafeDivide(desiredWorldScale.y, parentWorldScale.y),
-            SafeDivide(desiredWorldScale.z, parentWorldScale.z));
+        shadowRect.localScale = Vector3.Scale(rect.lossyScale, Vector3.one * shadowScaleMultiplier);
         shadowRect.sizeDelta = rect.rect.size;
     }
 
@@ -299,7 +275,7 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
         }
 
         shadowRect.anchoredPosition = Vector2.zero;
-        shadowRect.localScale = originalShadowLocalScale;
+        shadowRect.localScale = Vector3.one;
         SetShadowScaleMultiplier(1f);
         shadowRect.gameObject.SetActive(false);
     }
@@ -385,8 +361,55 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
         return basePosition + new Vector2(0f, isSelected ? selectedLift : 0f);
     }
 
-    private static float SafeDivide(float numerator, float denominator)
+    private void CacheDragPointerOffset(PointerEventData eventData)
     {
-        return Mathf.Approximately(denominator, 0f) ? numerator : numerator / denominator;
+        activeDragParent = rect.parent as RectTransform;
+        if (activeDragParent == null)
+        {
+            dragPointerOffset = Vector2.zero;
+            return;
+        }
+
+        Camera eventCamera = GetEventCamera(eventData);
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(activeDragParent, eventData.position, eventCamera, out Vector2 localPointerPosition))
+        {
+            dragPointerOffset = localPointerPosition - rect.anchoredPosition;
+        }
+        else
+        {
+            dragPointerOffset = Vector2.zero;
+        }
+    }
+
+    private void UpdateDraggedPosition(PointerEventData eventData)
+    {
+        if (activeDragParent == null)
+            activeDragParent = rect.parent as RectTransform;
+
+        if (activeDragParent == null)
+        {
+            rect.anchoredPosition += eventData.delta / canvas.scaleFactor;
+            return;
+        }
+
+        Camera eventCamera = GetEventCamera(eventData);
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(activeDragParent, eventData.position, eventCamera, out Vector2 localPointerPosition))
+            return;
+
+        rect.anchoredPosition = localPointerPosition - dragPointerOffset;
+    }
+
+    private Camera GetEventCamera(PointerEventData eventData)
+    {
+        if (eventData != null)
+        {
+            if (eventData.pressEventCamera != null)
+                return eventData.pressEventCamera;
+
+            if (eventData.enterEventCamera != null)
+                return eventData.enterEventCamera;
+        }
+
+        return canvas != null ? canvas.worldCamera : null;
     }
 }

@@ -798,7 +798,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.000053405, y: -212.21}
+  m_AnchoredPosition: {x: 0.0000076302, y: -179}
   m_SizeDelta: {x: 362.4089, y: 65.5168}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1259367993
@@ -959,6 +959,12 @@ MonoBehaviour:
   playedCardText: {fileID: 149031831}
   commentaryText: {fileID: 1790906738}
   commentaryLetterDelay: 0.03
+  seatNameColor: {r: 0, g: 0, b: 0, a: 1}
+  activeSeatNameColor: {r: 0.76862746, g: 1, b: 0.80784315, a: 1}
+  seatNamePositionBottom: {x: 20, y: -234}
+  seatNamePositionLeft: {x: -545, y: 104.56}
+  seatNamePositionTop: {x: 20, y: 504}
+  seatNamePositionRight: {x: 607, y: 104.56}
   localPlayerSeat: 0
   startingSeat: 0
   allowOutOfTurnTesting: 0

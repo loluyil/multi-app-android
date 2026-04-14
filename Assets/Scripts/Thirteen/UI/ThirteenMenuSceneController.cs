@@ -161,6 +161,8 @@ public class ThirteenMenuSceneController : MonoBehaviour
             ConfigureStretch(textArea, new Vector2(18f, 10f), new Vector2(-18f, -10f));
         }
 
+        GetOrAddComponent<RectMask2D>(textArea.gameObject);
+
         TextMeshProUGUI text = input.textComponent as TextMeshProUGUI;
         if (text == null)
         {
@@ -174,11 +176,15 @@ public class ThirteenMenuSceneController : MonoBehaviour
             text.fontStyle = FontStyles.Normal;
             text.alignment = TextAlignmentOptions.Left;
             text.color = Color.white;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            text.overflowMode = TextOverflowModes.Overflow;
             ConfigureStretch(text.rectTransform, Vector2.zero, Vector2.zero);
             input.textComponent = text;
         }
         else
         {
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            text.overflowMode = TextOverflowModes.Overflow;
             ConfigureStretch(text.rectTransform, Vector2.zero, Vector2.zero);
         }
 
@@ -195,14 +201,25 @@ public class ThirteenMenuSceneController : MonoBehaviour
             placeholder.fontStyle = FontStyles.Italic;
             placeholder.alignment = TextAlignmentOptions.Left;
             placeholder.color = new Color(1f, 1f, 1f, 0.45f);
+            placeholder.textWrappingMode = TextWrappingModes.NoWrap;
+            placeholder.overflowMode = TextOverflowModes.Ellipsis;
             ConfigureStretch(placeholder.rectTransform, Vector2.zero, Vector2.zero);
             input.placeholder = placeholder;
         }
+        else if (input.placeholder is TextMeshProUGUI existingPlaceholder)
+        {
+            existingPlaceholder.textWrappingMode = TextWrappingModes.NoWrap;
+            existingPlaceholder.overflowMode = TextOverflowModes.Ellipsis;
+            ConfigureStretch(existingPlaceholder.rectTransform, Vector2.zero, Vector2.zero);
+        }
+
         input.lineType = TMP_InputField.LineType.SingleLine;
         input.readOnly = true;
         input.interactable = true;
         input.caretColor = Color.white;
         input.selectionColor = new Color(0.45f, 0.7f, 1f, 0.35f);
+        input.textViewport.GetComponent<RectMask2D>().enabled = true;
+        input.ForceLabelUpdate();
     }
 
     private TMP_InputField ResolveLobbyCodeInput()
