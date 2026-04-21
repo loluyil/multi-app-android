@@ -245,7 +245,14 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
 
         shadowRect.position = rect.position + (Vector3)offset;
         shadowRect.rotation = rect.rotation;
-        shadowRect.localScale = Vector3.Scale(rect.lossyScale, Vector3.one * shadowScaleMultiplier);
+
+        Vector3 targetLossy = rect.lossyScale * shadowScaleMultiplier;
+        Vector3 parentLossy = shadowRect.parent != null ? shadowRect.parent.lossyScale : Vector3.one;
+        shadowRect.localScale = new Vector3(
+            Mathf.Approximately(parentLossy.x, 0f) ? targetLossy.x : targetLossy.x / parentLossy.x,
+            Mathf.Approximately(parentLossy.y, 0f) ? targetLossy.y : targetLossy.y / parentLossy.y,
+            Mathf.Approximately(parentLossy.z, 0f) ? targetLossy.z : targetLossy.z / parentLossy.z);
+
         shadowRect.sizeDelta = rect.rect.size;
     }
 

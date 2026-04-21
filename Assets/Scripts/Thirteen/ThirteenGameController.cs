@@ -25,6 +25,7 @@ public class ThirteenGameController : MonoBehaviour
     [SerializeField] private float commentaryLetterDelay = 0.03f;
 
     [Header("Seat UI")]
+    [SerializeField] private RectTransform seatUiRoot;
     [SerializeField] private Color seatNameColor = Color.black;
     [SerializeField] private Color activeSeatNameColor = new Color(196f / 255f, 1f, 206f / 255f, 1f);
     [SerializeField] private Vector2 seatNamePositionBottom = new Vector2(20f, -234f);
@@ -135,7 +136,6 @@ public class ThirteenGameController : MonoBehaviour
     private CanvasGroup rematchFadeGroup;
     private Image rematchFadeImage;
     private float shakeBlockUntilTime;
-    private RectTransform seatUiRoot;
     private bool awaitingLocalConfirmation;
 
     private void Awake()
@@ -361,28 +361,20 @@ public class ThirteenGameController : MonoBehaviour
             if (rootCanvas == null)
                 return;
 
-            Transform existing = rootCanvas.transform.Find("SeatUiRuntime");
-            GameObject rootObject;
-            if (existing != null)
-            {
-                rootObject = existing.gameObject;
-            }
-            else
-            {
-                rootObject = new GameObject("SeatUiRuntime", typeof(RectTransform));
-                rootObject.transform.SetParent(rootCanvas.transform, false);
-            }
-
-            seatUiRoot = rootObject.GetComponent<RectTransform>();
-            seatUiRoot.anchorMin = Vector2.zero;
-            seatUiRoot.anchorMax = Vector2.one;
-            seatUiRoot.offsetMin = Vector2.zero;
-            seatUiRoot.offsetMax = Vector2.zero;
-            seatUiRoot.SetAsLastSibling();
+            seatUiRoot = FindSeatUiRootInCanvas(rootCanvas);
+            if (seatUiRoot == null)
+                return;
         }
 
         for (int seat = 0; seat < 4; seat++)
         {
+            if (seatNameTexts[seat] != null)
+                continue;
+
+            Transform existingSeatName = seatUiRoot.Find($"SeatName_{seat}");
+            if (existingSeatName != null)
+                seatNameTexts[seat] = existingSeatName.GetComponent<TMP_Text>();
+
             if (seatNameTexts[seat] == null)
                 seatNameTexts[seat] = CreateSeatUiText($"SeatName_{seat}", 30f, FontStyles.Bold);
         }
@@ -393,6 +385,20 @@ public class ThirteenGameController : MonoBehaviour
             if (existingIndicator != null)
                 Destroy(existingIndicator.gameObject);
         }
+    }
+
+    private static RectTransform FindSeatUiRootInCanvas(Canvas canvas)
+    {
+        if (canvas == null)
+            return null;
+
+        Transform[] all = canvas.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i] != null && all[i].name == "SeatUiRuntime")
+                return all[i] as RectTransform;
+        }
+        return null;
     }
 
     private TMP_Text CreateSeatUiText(string objectName, float fontSize, FontStyles fontStyle)
@@ -434,25 +440,16 @@ public class ThirteenGameController : MonoBehaviour
 
         for (int seat = 0; seat < 4; seat++)
         {
-            int visualSeat = VisualOffsetForSeat(seat);
-            Vector2 anchoredPosition = GetSeatLabelPosition(visualSeat);
-
             TMP_Text nameText = seatNameTexts[seat];
             if (nameText != null)
             {
                 nameText.gameObject.SetActive(true);
-                RectTransform rect = nameText.rectTransform;
-                rect.anchoredPosition = anchoredPosition;
-                nameText.alignment = SeatLabelAlignmentForVisualSeat(visualSeat);
                 nameText.text = GetSeatDisplayName(seat, preferYouForLocal: false);
                 nameText.color = matchState != null && !gameOver && matchState.CurrentTurnSeat == seat
                     ? activeSeatNameColor
                     : seatNameColor;
             }
         }
-
-        if (seatUiRoot != null)
-            seatUiRoot.SetAsLastSibling();
     }
 
     private Vector2 GetSeatLabelPosition(int visualSeat)
