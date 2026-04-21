@@ -571,8 +571,17 @@ public class HorizontalCardHolder : MonoBehaviour
 
             dragCard.KillTweens();
             dragCard.TweenScale(Vector3.one, returnDuration, returnEase);
+            // OnKill is the safety net: if this tween is killed externally
+            // (e.g. a fresh drag on another card triggers ArrangeCards -> KillTweens),
+            // OnComplete never fires and the card would be stuck with isReturning=true,
+            // making it unclickable/undraggable forever.
             dragCard.RectTransform.DOMove(targetWorldPosition, returnDuration)
                 .SetEase(returnEase)
+                .OnKill(() =>
+                {
+                    if (dragCard != null)
+                        dragCard.SetReturning(false);
+                })
                 .OnComplete(() =>
                 {
                     if (dragCard == null || targetSlot == null)
