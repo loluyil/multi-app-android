@@ -152,12 +152,18 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
 
     public void OnDrag(PointerEventData eventData)
     {
+        if (!isDragging)
+            return;
+
         lastPointerScreenPosition = eventData.position;
         UpdateDraggedPosition(eventData);
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
+        if (!isDragging)
+            return;
+
         lastPointerScreenPosition = eventData.position;
         isDragging = false;
         activeDragParent = null;

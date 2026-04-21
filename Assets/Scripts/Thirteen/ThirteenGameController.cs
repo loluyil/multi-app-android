@@ -1241,9 +1241,9 @@ public class ThirteenGameController : MonoBehaviour
         if (passButton != null)
             passButton.interactable = canPass;
 
-        bool localCanInteract = !awaitingLocalConfirmation && (allowOutOfTurnTesting || isLocalTurn);
-        localHandHolder.SetHandInteractionEnabled(localCanInteract);
-        localHandHolder.SetTurnActive(localCanInteract);
+        bool localCanPlay = !awaitingLocalConfirmation && (allowOutOfTurnTesting || isLocalTurn);
+        localHandHolder.SetHandInteractionEnabled(!awaitingLocalConfirmation);
+        localHandHolder.SetTurnActive(localCanPlay);
         Debug.Log($"[Thirteen] Turn: Seat {currentSeat}");
 
         if (matchState.TrickIsOpen)
