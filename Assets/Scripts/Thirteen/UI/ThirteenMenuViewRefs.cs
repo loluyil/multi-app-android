@@ -27,6 +27,7 @@ public class ThirteenMenuViewRefs : MonoBehaviour
     public Button settingsButton;
     public Button settingsBackButton;
     public Button exitGameButton;
+    public Button fullscreenButton;
 
     [Header("Inputs")]
     public TMP_InputField displayNameInput;

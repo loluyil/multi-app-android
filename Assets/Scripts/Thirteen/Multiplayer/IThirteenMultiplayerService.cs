@@ -26,4 +26,9 @@ public interface IThirteenMultiplayerService
     void PublishMatchProperties(IDictionary<string, string> properties);
     void SubmitPlayerAction(string value);
     string GetPlayerActionFor(string playerId);
+
+    bool IsPlayerInSession(string playerId);
+    IReadOnlyList<string> GetSessionPlayerIds();
+    void SetLocalPlayerProperty(string key, string value);
+    string GetPlayerProperty(string playerId, string key);
 }

@@ -243,7 +243,10 @@ public class Card : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHand
         if (shadowRect == null || !shadowRect.gameObject.activeSelf)
             return;
 
-        shadowRect.position = rect.position + (Vector3)offset;
+        Vector3 cardParentLossy = rect.parent != null ? rect.parent.lossyScale : Vector3.one;
+        Vector3 worldOffset = new Vector3(offset.x * cardParentLossy.x, offset.y * cardParentLossy.y, 0f);
+
+        shadowRect.position = rect.position + worldOffset;
         shadowRect.rotation = rect.rotation;
 
         Vector3 targetLossy = rect.lossyScale * shadowScaleMultiplier;

@@ -101,8 +101,13 @@ public class ThirteenDeckDealer : MonoBehaviour
 
     public void ShuffleAndDeal(int? seed)
     {
+        ShuffleAndDeal(seed, 0);
+    }
+
+    public void ShuffleAndDeal(int? seed, int localSeat)
+    {
         PrepareHands(seed);
-        PlayPreparedDealAnimation();
+        PlayPreparedDealAnimation(true, localSeat);
     }
 
     public void PrepareHands(int? seed)

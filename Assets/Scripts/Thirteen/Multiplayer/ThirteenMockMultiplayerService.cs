@@ -23,11 +23,58 @@ public class ThirteenMockMultiplayerService : IThirteenMultiplayerService
     public string LocalPlayerId => localPlayerId;
     public int MatchDataRevision => 0;
 
+    private readonly Dictionary<string, Dictionary<string, string>> mockPlayerProperties = new Dictionary<string, Dictionary<string, string>>();
+
     public string GetMatchProperty(string key) => null;
     public void PublishMatchProperty(string key, string value) { }
     public void PublishMatchProperties(System.Collections.Generic.IDictionary<string, string> properties) { }
     public void SubmitPlayerAction(string value) { }
     public string GetPlayerActionFor(string playerId) => null;
+
+    public bool IsPlayerInSession(string playerId)
+    {
+        if (currentLobby == null || string.IsNullOrEmpty(playerId))
+            return false;
+
+        return currentLobby.Players.Any(player => player != null && player.Id == playerId && player.IsConnected && !player.IsPlaceholder);
+    }
+
+    public IReadOnlyList<string> GetSessionPlayerIds()
+    {
+        if (currentLobby == null)
+            return Array.Empty<string>();
+
+        return currentLobby.Players
+            .Where(player => player != null && player.IsConnected && !player.IsPlaceholder && !player.IsBot)
+            .Select(player => player.Id)
+            .ToList();
+    }
+
+    public void SetLocalPlayerProperty(string key, string value)
+    {
+        if (string.IsNullOrEmpty(localPlayerId) || string.IsNullOrEmpty(key))
+            return;
+
+        if (!mockPlayerProperties.TryGetValue(localPlayerId, out Dictionary<string, string> props))
+        {
+            props = new Dictionary<string, string>();
+            mockPlayerProperties[localPlayerId] = props;
+        }
+
+        props[key] = value ?? string.Empty;
+    }
+
+    public string GetPlayerProperty(string playerId, string key)
+    {
+        if (string.IsNullOrEmpty(playerId) || string.IsNullOrEmpty(key))
+            return null;
+
+        if (mockPlayerProperties.TryGetValue(playerId, out Dictionary<string, string> props)
+            && props.TryGetValue(key, out string value))
+            return value;
+
+        return null;
+    }
 
     public ThirteenLobbyState HostLobby(string displayName)
     {

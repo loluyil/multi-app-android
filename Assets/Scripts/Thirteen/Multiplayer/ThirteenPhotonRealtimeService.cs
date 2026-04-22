@@ -216,6 +216,63 @@ public class ThirteenPhotonRealtimeService : IThirteenMultiplayerService,
         return null;
     }
 
+    public bool IsPlayerInSession(string playerId)
+    {
+        if (!client.InRoom || string.IsNullOrEmpty(playerId))
+            return false;
+
+        foreach (Player player in client.CurrentRoom.Players.Values)
+        {
+            if (player != null && player.UserId == playerId)
+                return true;
+        }
+
+        return false;
+    }
+
+    public IReadOnlyList<string> GetSessionPlayerIds()
+    {
+        if (!client.InRoom)
+            return Array.Empty<string>();
+
+        List<string> ids = new List<string>();
+        foreach (Player player in client.CurrentRoom.Players.Values)
+        {
+            if (player != null && !string.IsNullOrEmpty(player.UserId))
+                ids.Add(player.UserId);
+        }
+
+        return ids;
+    }
+
+    public void SetLocalPlayerProperty(string key, string value)
+    {
+        if (!client.InRoom || client.LocalPlayer == null || string.IsNullOrEmpty(key))
+            return;
+
+        client.LocalPlayer.SetCustomProperties(new Hashtable
+        {
+            [key] = value ?? string.Empty
+        });
+    }
+
+    public string GetPlayerProperty(string playerId, string key)
+    {
+        if (!client.InRoom || string.IsNullOrEmpty(playerId) || string.IsNullOrEmpty(key))
+            return null;
+
+        foreach (Player player in client.CurrentRoom.Players.Values)
+        {
+            if (player == null || player.UserId != playerId || player.CustomProperties == null)
+                continue;
+
+            if (player.CustomProperties.TryGetValue(key, out object value))
+                return value?.ToString();
+        }
+
+        return null;
+    }
+
     private void EnsureConnected()
     {
         ThirteenPhotonConfigData config = ThirteenPhotonConfig.Load();
@@ -357,10 +414,39 @@ public class ThirteenPhotonRealtimeService : IThirteenMultiplayerService,
         };
 
         string started = GetMatchProperty(MatchStartedPropertyKey);
-        if (started == "1")
+        bool localSeated = LocalPlayerIsSeated();
+        if (started == "1" && localSeated)
             matchStartRequested = true;
+        else if (started == "1" && !localSeated)
+            SetStatus("Match in progress — waiting for next round.");
 
         lobbyRevision++;
+    }
+
+    private bool LocalPlayerIsSeated()
+    {
+        if (client.LocalPlayer == null)
+            return false;
+
+        string seatsCsv = GetMatchProperty("seats");
+        if (string.IsNullOrEmpty(seatsCsv))
+            return false;
+
+        string localId = client.UserId;
+        if (string.IsNullOrEmpty(localId))
+            return false;
+
+        foreach (string chunk in seatsCsv.Split(','))
+        {
+            int colon = chunk.IndexOf(':');
+            if (colon <= 0)
+                continue;
+
+            if (chunk.Substring(0, colon) == localId)
+                return true;
+        }
+
+        return false;
     }
 
     private static string BuildSeatAssignments(ThirteenLobbyState lobby)

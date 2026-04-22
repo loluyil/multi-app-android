@@ -28,10 +28,6 @@ public class ThirteenGameController : MonoBehaviour
     [SerializeField] private RectTransform seatUiRoot;
     [SerializeField] private Color seatNameColor = Color.black;
     [SerializeField] private Color activeSeatNameColor = new Color(196f / 255f, 1f, 206f / 255f, 1f);
-    [SerializeField] private Vector2 seatNamePositionBottom = new Vector2(20f, -234f);
-    [SerializeField] private Vector2 seatNamePositionLeft = new Vector2(-545f, 104.56f);
-    [SerializeField] private Vector2 seatNamePositionTop = new Vector2(20f, 504f);
-    [SerializeField] private Vector2 seatNamePositionRight = new Vector2(607f, 104.56f);
 
     // Inline templates for turn phase / played card / win text.
     // (The ThirteenCommentaryStrings file only holds the random commentary pools now.)
@@ -124,6 +120,7 @@ public class ThirteenGameController : MonoBehaviour
     private readonly Dictionary<int, string> seatToPlayerId = new Dictionary<int, string>();
     private readonly Dictionary<string, int> playerIdToSeat = new Dictionary<string, int>();
     private readonly TMP_Text[] seatNameTexts = new TMP_Text[4];
+    private List<Card> pendingLocalDragGroup;
     private string leavePromptDefaultText = "leave";
     private bool leaveConfirmArmed;
     private Graphic leaveButtonGraphic;
@@ -131,10 +128,14 @@ public class ThirteenGameController : MonoBehaviour
     private Coroutine rematchCoroutine;
     private int rematchSequence;
     private bool rematchInProgress;
+    private bool abandoningMatch;
     private float nextRematchAllowedTime;
     private const float RematchSpamCooldown = 0.35f;
+    private const string RematchReadyPropertyKey = "rematch_ready";
     private CanvasGroup rematchFadeGroup;
     private Image rematchFadeImage;
+    private TMP_Text rematchReadyCounterText;
+    [SerializeField] private Vector2 rematchCounterOffset = new Vector2(160f, 0f);
     private float shakeBlockUntilTime;
     private bool awaitingLocalConfirmation;
 
@@ -200,17 +201,21 @@ public class ThirteenGameController : MonoBehaviour
             if (!playerIdToSeat.TryGetValue(mpService.LocalPlayerId ?? string.Empty, out int mySeat))
                 mySeat = 0;
             localPlayerSeat = mySeat;
+            RefreshSeatUi();
 
             if (!int.TryParse(mpService.GetMatchProperty("start"), out int startSeat))
                 startSeat = 0;
             startingSeat = startSeat;
+
+            if (int.TryParse(mpService.GetMatchProperty("rematch_seq"), out int existingRematchSeq))
+                rematchSequence = existingRematchSeq;
 
             int seed;
             if (!int.TryParse(mpService.GetMatchProperty("seed"), out seed))
                 seed = 0;
 
             if (deckDealer != null && !deckDealer.HasDealtHands && !deckDealer.IsDealing)
-                deckDealer.ShuffleAndDeal(seed);
+                deckDealer.ShuffleAndDeal(seed, localPlayerSeat);
         }
 
         if (deckDealer != null && deckDealer.IsDealing)
@@ -226,17 +231,67 @@ public class ThirteenGameController : MonoBehaviour
         if (!isMultiplayer || mpService == null || matchState == null)
             return;
 
+        if (abandoningMatch)
+            return;
+
         mpService.Tick();
+
+        bool wasHost = isHost;
+        isHost = mpService.IsHost;
+
+        if (!wasHost && isHost)
+            OnPromotedToHost();
 
         if (mpService.MatchDataRevision == lastSeenMatchRevision)
             return;
 
         lastSeenMatchRevision = mpService.MatchDataRevision;
 
+        if (isHost)
+        {
+            DetectAndReplaceDepartedPlayers();
+            DetectAndSeatRejoiners();
+        }
+
         if (!gameOver && isHost)
             ProcessRemoteActionsAsHost();
 
         ProcessMatchPropertyUpdates();
+        UpdateRematchReadyDisplay();
+    }
+
+    private void OnPromotedToHost()
+    {
+        if (mpService == null || !isMultiplayer)
+            return;
+
+        if (abandoningMatch)
+            return;
+
+        mpService.PublishMatchProperties(new Dictionary<string, string>
+        {
+            ["match_started"] = "0",
+            ["seed"] = string.Empty,
+            ["start"] = string.Empty,
+            ["seats"] = string.Empty,
+            ["move_log"] = string.Empty,
+            ["rematch_seq"] = "0"
+        });
+
+        AbandonMatchAndReturnToMenu();
+    }
+
+    private void AbandonMatchAndReturnToMenu()
+    {
+        if (abandoningMatch)
+            return;
+
+        abandoningMatch = true;
+
+        if (mpService != null)
+            mpService.ClearMatchStartFlag();
+
+        AppSceneLoader.Load(AppSceneNames.ThirteenMenu);
     }
 
     private void ParseSeatAssignments(string csv)
@@ -258,13 +313,16 @@ public class ThirteenGameController : MonoBehaviour
             seatToPlayerId[seat] = pid;
             playerIdToSeat[pid] = seat;
         }
-
-        RefreshSeatUi();
     }
 
     private bool SeatIsBot(int seat)
     {
         return seatToPlayerId.TryGetValue(seat, out string pid) && pid != null && pid.StartsWith("bot-");
+    }
+
+    private static bool IsLeaveReplacementBotId(string playerId)
+    {
+        return !string.IsNullOrEmpty(playerId) && playerId.StartsWith("bot-leave-");
     }
 
     private string GetSeatDisplayName(int seat, bool preferYouForLocal = true)
@@ -274,6 +332,9 @@ public class ThirteenGameController : MonoBehaviour
 
         if (seatToPlayerId.TryGetValue(seat, out string playerId) && !string.IsNullOrWhiteSpace(playerId))
         {
+            if (IsLeaveReplacementBotId(playerId))
+                return $"Bot {seat}";
+
             ThirteenLobbyState lobby = mpService != null ? mpService.CurrentLobby : null;
             if (lobby != null)
             {
@@ -440,42 +501,28 @@ public class ThirteenGameController : MonoBehaviour
 
         for (int seat = 0; seat < 4; seat++)
         {
-            TMP_Text nameText = seatNameTexts[seat];
-            if (nameText != null)
-            {
-                nameText.gameObject.SetActive(true);
-                nameText.text = GetSeatDisplayName(seat, preferYouForLocal: false);
-                nameText.color = matchState != null && !gameOver && matchState.CurrentTurnSeat == seat
-                    ? activeSeatNameColor
-                    : seatNameColor;
-            }
+            int visualSeat = VisualOffsetForSeat(seat);
+            if (visualSeat < 0 || visualSeat >= seatNameTexts.Length)
+                continue;
+
+            TMP_Text nameText = seatNameTexts[visualSeat];
+            if (nameText == null)
+                continue;
+
+            nameText.gameObject.SetActive(true);
+            nameText.text = GetSeatDisplayName(seat, preferYouForLocal: false);
+            nameText.color = matchState != null && !gameOver && matchState.CurrentTurnSeat == seat
+                ? activeSeatNameColor
+                : seatNameColor;
         }
-    }
-
-    private Vector2 GetSeatLabelPosition(int visualSeat)
-    {
-        return visualSeat switch
-        {
-            0 => seatNamePositionBottom,
-            1 => seatNamePositionLeft,
-            2 => seatNamePositionTop,
-            3 => seatNamePositionRight,
-            _ => Vector2.zero
-        };
-    }
-
-    private static TextAlignmentOptions SeatLabelAlignmentForVisualSeat(int visualSeat)
-    {
-        return visualSeat switch
-        {
-            _ => TextAlignmentOptions.Center
-        };
     }
 
     private void OnLeaveButtonClicked()
     {
         if (leaveConfirmArmed)
         {
+            if (isMultiplayer && mpService != null)
+                mpService.LeaveLobby();
             AppSceneLoader.Load(AppSceneNames.ThirteenMenu);
             return;
         }
@@ -534,15 +581,148 @@ public class ThirteenGameController : MonoBehaviour
             rematchButton.interactable = false;
             rematchButton.gameObject.SetActive(false);
         }
+
+        if (rematchReadyCounterText != null)
+            rematchReadyCounterText.gameObject.SetActive(false);
     }
 
     private void ShowRematchButton()
     {
         if (rematchButton != null)
-        {
-            rematchButton.interactable = !rematchInProgress;
             rematchButton.gameObject.SetActive(true);
+
+        EnsureRematchReadyCounter();
+        UpdateRematchReadyDisplay();
+    }
+
+    private void EnsureRematchReadyCounter()
+    {
+        if (rematchReadyCounterText != null || rematchButton == null)
+            return;
+
+        Transform parent = rematchButton.transform.parent;
+        if (parent == null)
+            return;
+
+        GameObject counterObject = new GameObject("RematchReadyCounter", typeof(RectTransform), typeof(TextMeshProUGUI));
+        counterObject.transform.SetParent(parent, false);
+
+        RectTransform buttonRect = rematchButton.transform as RectTransform;
+        RectTransform counterRect = counterObject.GetComponent<RectTransform>();
+        if (buttonRect != null)
+        {
+            counterRect.anchorMin = buttonRect.anchorMin;
+            counterRect.anchorMax = buttonRect.anchorMax;
+            counterRect.pivot = buttonRect.pivot;
+            counterRect.anchoredPosition = buttonRect.anchoredPosition + rematchCounterOffset;
+            counterRect.sizeDelta = new Vector2(Mathf.Max(120f, buttonRect.sizeDelta.x * 0.6f), buttonRect.sizeDelta.y);
         }
+        else
+        {
+            counterRect.sizeDelta = new Vector2(140f, 56f);
+        }
+
+        rematchReadyCounterText = counterObject.GetComponent<TextMeshProUGUI>();
+        rematchReadyCounterText.alignment = TextAlignmentOptions.Center;
+        rematchReadyCounterText.fontSize = 36f;
+        rematchReadyCounterText.fontStyle = FontStyles.Bold;
+        rematchReadyCounterText.color = seatNameColor;
+        rematchReadyCounterText.raycastTarget = false;
+
+        TMP_Text referenceText = turnPhaseText != null ? turnPhaseText : playedCardText;
+        if (referenceText != null)
+        {
+            rematchReadyCounterText.font = referenceText.font;
+            rematchReadyCounterText.fontSharedMaterial = referenceText.fontSharedMaterial;
+        }
+
+        rematchReadyCounterText.gameObject.SetActive(false);
+    }
+
+    private string NextRematchReadyToken()
+    {
+        return (rematchSequence + 1).ToString();
+    }
+
+    private IReadOnlyList<string> GetActiveRemoteHumanPlayerIds()
+    {
+        List<string> result = new List<string>();
+        if (mpService == null)
+            return result;
+
+        string localId = mpService.LocalPlayerId ?? string.Empty;
+        foreach (string pid in mpService.GetSessionPlayerIds())
+        {
+            if (string.IsNullOrEmpty(pid) || pid == localId)
+                continue;
+            if (pid.StartsWith("bot-"))
+                continue;
+            result.Add(pid);
+        }
+
+        return result;
+    }
+
+    private int CountReadyRemoteHumans()
+    {
+        if (mpService == null)
+            return 0;
+
+        string expectedToken = NextRematchReadyToken();
+        int count = 0;
+        foreach (string pid in GetActiveRemoteHumanPlayerIds())
+        {
+            string value = mpService.GetPlayerProperty(pid, RematchReadyPropertyKey);
+            if (!string.IsNullOrEmpty(value) && value == expectedToken)
+                count++;
+        }
+
+        return count;
+    }
+
+    private void SetLocalRematchReady(bool ready)
+    {
+        if (mpService == null)
+            return;
+
+        mpService.SetLocalPlayerProperty(RematchReadyPropertyKey, ready ? NextRematchReadyToken() : string.Empty);
+    }
+
+    private bool LocalIsRematchReady()
+    {
+        if (mpService == null)
+            return false;
+
+        string value = mpService.GetPlayerProperty(mpService.LocalPlayerId ?? string.Empty, RematchReadyPropertyKey);
+        return !string.IsNullOrEmpty(value) && value == NextRematchReadyToken();
+    }
+
+    private void UpdateRematchReadyDisplay()
+    {
+        if (rematchButton == null || !rematchButton.gameObject.activeSelf)
+            return;
+
+        if (!isMultiplayer || mpService == null)
+        {
+            if (rematchReadyCounterText != null)
+                rematchReadyCounterText.gameObject.SetActive(false);
+            rematchButton.interactable = !rematchInProgress;
+            return;
+        }
+
+        int total = GetActiveRemoteHumanPlayerIds().Count;
+        int ready = CountReadyRemoteHumans();
+
+        if (rematchReadyCounterText != null)
+        {
+            rematchReadyCounterText.gameObject.SetActive(true);
+            rematchReadyCounterText.text = $"{ready}/{total}";
+        }
+
+        if (isHost)
+            rematchButton.interactable = !rematchInProgress && ready >= total;
+        else
+            rematchButton.interactable = !rematchInProgress && !LocalIsRematchReady();
     }
 
     private void OnRematchButtonClicked()
@@ -555,20 +735,31 @@ public class ThirteenGameController : MonoBehaviour
         if (rematchInProgress)
             return;
 
-        if (rematchButton != null)
-            rematchButton.interactable = false;
-
         if (!isMultiplayer || mpService == null)
         {
+            if (rematchButton != null)
+                rematchButton.interactable = false;
             BeginRematch(null, null, null);
             return;
         }
 
         if (!isHost)
         {
-            Debug.Log("[Thirteen] Waiting for host to start rematch.");
+            SetLocalRematchReady(true);
+            UpdateRematchReadyDisplay();
             return;
         }
+
+        int total = GetActiveRemoteHumanPlayerIds().Count;
+        int ready = CountReadyRemoteHumans();
+        if (ready < total)
+        {
+            UpdateRematchReadyDisplay();
+            return;
+        }
+
+        if (rematchButton != null)
+            rematchButton.interactable = false;
 
         System.Random rng = new System.Random();
         int nextSeed = rng.Next(int.MinValue, int.MaxValue);
@@ -645,6 +836,9 @@ public class ThirteenGameController : MonoBehaviour
         {
             localActionSeq++;
             awaitingLocalConfirmation = true;
+            pendingLocalDragGroup = draggedCards != null && draggedCards.Count > 0
+                ? draggedCards.Where(card => card != null).ToList()
+                : null;
             localHandHolder.ClearSelection();
             localHandHolder.SetTurnActive(false);
             localHandHolder.SetHandInteractionEnabled(false);
@@ -1677,8 +1871,135 @@ public class ThirteenGameController : MonoBehaviour
         return !string.IsNullOrEmpty(payload);
     }
 
+    private void DetectAndReplaceDepartedPlayers()
+    {
+        if (mpService == null || !isHost)
+            return;
+
+        if (seatToPlayerId.Count == 0)
+            return;
+
+        string localId = mpService.LocalPlayerId ?? string.Empty;
+        Dictionary<int, string> replacements = null;
+
+        for (int seat = 0; seat < 4; seat++)
+        {
+            if (!seatToPlayerId.TryGetValue(seat, out string pid) || string.IsNullOrEmpty(pid))
+                continue;
+            if (pid.StartsWith("bot-"))
+                continue;
+            if (pid == localId)
+                continue;
+            if (mpService.IsPlayerInSession(pid))
+                continue;
+
+            if (replacements == null)
+                replacements = new Dictionary<int, string>();
+            replacements[seat] = $"bot-leave-{seat}";
+        }
+
+        if (replacements == null)
+            return;
+
+        foreach (KeyValuePair<int, string> pair in replacements)
+        {
+            int seat = pair.Key;
+            string newId = pair.Value;
+            if (seatToPlayerId.TryGetValue(seat, out string oldPid) && !string.IsNullOrEmpty(oldPid))
+                playerIdToSeat.Remove(oldPid);
+            seatToPlayerId[seat] = newId;
+            playerIdToSeat[newId] = seat;
+            remoteLastSeenSeq.Remove(newId);
+        }
+
+        string newCsv = BuildSeatsCsv();
+        lastSeenSeatsCsv = newCsv;
+        mpService.PublishMatchProperty("seats", newCsv);
+        RefreshSeatUi();
+        UpdateTurnState();
+    }
+
+    private string BuildSeatsCsv()
+    {
+        List<string> parts = new List<string>(4);
+        for (int seat = 0; seat < 4; seat++)
+        {
+            if (seatToPlayerId.TryGetValue(seat, out string pid) && !string.IsNullOrEmpty(pid))
+                parts.Add($"{pid}:{seat}");
+        }
+        return string.Join(",", parts);
+    }
+
+    private void DetectAndSeatRejoiners()
+    {
+        if (mpService == null || !isHost)
+            return;
+
+        IReadOnlyList<string> sessionIds = mpService.GetSessionPlayerIds();
+        if (sessionIds == null || sessionIds.Count == 0)
+            return;
+
+        List<string> unseated = new List<string>();
+        foreach (string pid in sessionIds)
+        {
+            if (string.IsNullOrEmpty(pid) || pid.StartsWith("bot-"))
+                continue;
+            if (playerIdToSeat.ContainsKey(pid))
+                continue;
+            unseated.Add(pid);
+        }
+
+        if (unseated.Count == 0)
+            return;
+
+        bool mutated = false;
+        foreach (string pid in unseated)
+        {
+            int targetSeat = -1;
+            for (int seat = 0; seat < 4; seat++)
+            {
+                if (seatToPlayerId.TryGetValue(seat, out string occupant) && IsLeaveReplacementBotId(occupant))
+                {
+                    targetSeat = seat;
+                    break;
+                }
+            }
+
+            if (targetSeat < 0)
+                break;
+
+            if (seatToPlayerId.TryGetValue(targetSeat, out string oldPid) && !string.IsNullOrEmpty(oldPid))
+                playerIdToSeat.Remove(oldPid);
+
+            seatToPlayerId[targetSeat] = pid;
+            playerIdToSeat[pid] = targetSeat;
+            remoteLastSeenSeq.Remove(pid);
+            mutated = true;
+        }
+
+        if (!mutated)
+            return;
+
+        string newCsv = BuildSeatsCsv();
+        lastSeenSeatsCsv = newCsv;
+        mpService.PublishMatchProperty("seats", newCsv);
+        RefreshSeatUi();
+        if (!gameOver)
+            UpdateTurnState();
+    }
+
     private void ProcessMatchPropertyUpdates()
     {
+        if (abandoningMatch)
+            return;
+
+        string matchStartedValue = mpService.GetMatchProperty("match_started");
+        if (matchStartedValue == "0")
+        {
+            AbandonMatchAndReturnToMenu();
+            return;
+        }
+
         string rematchValue = mpService.GetMatchProperty("rematch_seq");
         if (int.TryParse(rematchValue, out int latestRematchSequence) && latestRematchSequence > rematchSequence)
         {
@@ -1694,17 +2015,21 @@ public class ThirteenGameController : MonoBehaviour
             return;
         }
 
-        if (gameOver)
-            return;
-
         string latestSeatsCsv = mpService.GetMatchProperty("seats") ?? string.Empty;
         if (!string.Equals(latestSeatsCsv, lastSeenSeatsCsv))
         {
             lastSeenSeatsCsv = latestSeatsCsv;
             ParseSeatAssignments(latestSeatsCsv);
-            RefreshOpponentVisuals();
-            UpdateTurnState();
+            RefreshSeatUi();
+            if (!gameOver)
+            {
+                RefreshOpponentVisuals();
+                UpdateTurnState();
+            }
         }
+
+        if (gameOver)
+            return;
 
         string moveLog = mpService.GetMatchProperty("move_log");
         if (string.IsNullOrEmpty(moveLog))
@@ -1764,7 +2089,14 @@ public class ThirteenGameController : MonoBehaviour
             return;
         }
 
-        CompletePlay(seat, sorted, null, previousHand);
+        IReadOnlyList<Card> draggedForLocal = null;
+        if (seat == localPlayerSeat && pendingLocalDragGroup != null && pendingLocalDragGroup.Count > 0)
+        {
+            draggedForLocal = pendingLocalDragGroup;
+            pendingLocalDragGroup = null;
+        }
+
+        CompletePlay(seat, sorted, draggedForLocal, previousHand);
     }
 
     private void ProcessRemoteActionsAsHost()
@@ -1948,6 +2280,7 @@ public class ThirteenGameController : MonoBehaviour
         rematchInProgress = true;
         gameOver = false;
         awaitingLocalConfirmation = false;
+        pendingLocalDragGroup = null;
         localActionSeq = 0;
         remoteLastSeenSeq.Clear();
         appliedMoveLogCount = 0;
@@ -1982,6 +2315,8 @@ public class ThirteenGameController : MonoBehaviour
 
             if (isMultiplayer && mpService != null && playerIdToSeat.TryGetValue(mpService.LocalPlayerId ?? string.Empty, out int mySeat))
                 localPlayerSeat = mySeat;
+
+            RefreshSeatUi();
         }
 
         if (startSeatOverride.HasValue)
@@ -2017,7 +2352,7 @@ public class ThirteenGameController : MonoBehaviour
         yield return null;
         yield return FadeRematchOverlay(0f);
 
-        deckDealer.PlayPreparedDealAnimation();
+        deckDealer.PlayPreparedDealAnimation(true, localPlayerSeat);
         yield return new WaitUntil(() => !deckDealer.IsDealing);
         FinishInitialization();
         rematchCoroutine = null;

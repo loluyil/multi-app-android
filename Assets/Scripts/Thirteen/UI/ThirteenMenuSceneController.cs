@@ -254,6 +254,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
         AttachButtonPop(view.settingsButton);
         AttachButtonPop(view.settingsBackButton);
         AttachButtonPop(view.exitGameButton);
+        AttachButtonPop(view.fullscreenButton);
     }
 
     private void EnsureSettingsViewIsConfigured()
@@ -279,8 +280,13 @@ public class ThirteenMenuSceneController : MonoBehaviour
             if (view.exitGameButton == null)
                 view.exitGameButton = FindButtonUnder(view.settingsPanel.transform, "ExitGameButton", "ExitButton", "QuitButton", "QuitGameButton");
 
+            if (view.fullscreenButton == null)
+                view.fullscreenButton = FindButtonUnder(view.settingsPanel.transform, "FullscreenButton", "WindowModeButton");
+
             view.settingsPanel.SetActive(false);
         }
+
+        RefreshFullscreenButtonLabel();
     }
 
     private void EnsureLoadingViewIsConfigured()
@@ -354,6 +360,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
         AddButtonListener(view.settingsButton, HandleSettingsButton);
         AddButtonListener(view.settingsBackButton, HandleCloseSettings);
         AddButtonListener(view.exitGameButton, HandleExitGame);
+        AddButtonListener(view.fullscreenButton, HandleToggleFullscreen);
     }
 
     private void UnwireButtons()
@@ -372,6 +379,7 @@ public class ThirteenMenuSceneController : MonoBehaviour
         RemoveButtonListener(view.settingsButton, HandleSettingsButton);
         RemoveButtonListener(view.settingsBackButton, HandleCloseSettings);
         RemoveButtonListener(view.exitGameButton, HandleExitGame);
+        RemoveButtonListener(view.fullscreenButton, HandleToggleFullscreen);
     }
 
     private void HandlePlaySolo()
@@ -501,6 +509,40 @@ public class ThirteenMenuSceneController : MonoBehaviour
     private void HandleExitGame()
     {
         Application.Quit();
+    }
+
+    private void HandleToggleFullscreen()
+    {
+        if (!TryConsumeButtonPress())
+            return;
+
+        bool goingWindowed = Screen.fullScreen;
+        if (goingWindowed)
+        {
+            int width = Mathf.Max(640, Mathf.RoundToInt(Screen.currentResolution.width * 0.75f));
+            int height = Mathf.Max(480, Mathf.RoundToInt(Screen.currentResolution.height * 0.75f));
+            Screen.SetResolution(width, height, FullScreenMode.Windowed);
+        }
+        else
+        {
+            Resolution native = Screen.currentResolution;
+            Screen.SetResolution(native.width, native.height, FullScreenMode.FullScreenWindow);
+        }
+
+        RefreshFullscreenButtonLabel(goingWindowed);
+    }
+
+    private void RefreshFullscreenButtonLabel()
+    {
+        RefreshFullscreenButtonLabel(!Screen.fullScreen);
+    }
+
+    private void RefreshFullscreenButtonLabel(bool isWindowed)
+    {
+        if (view == null || view.fullscreenButton == null)
+            return;
+
+        SetButtonLabel(view.fullscreenButton, isWindowed ? "fullscreen" : "windowed");
     }
 
     private void ShowMainPanel()
